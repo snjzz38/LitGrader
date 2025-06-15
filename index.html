@@ -683,7 +683,10 @@
 
            if (attachedFiles[inputId].length === 0) {
                fileListElement.classList.remove('expanded'); // Ensure collapsed if no files
-               const toggleButton = fileListElement.previousElementSibling.querySelector('.toggle-file-list-button');
+               // Locate the specific toggle button for this input section
+               const fileInput = dom[inputId];
+               const parentDiv = fileInput.closest('.flex.items-center');
+               const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null;
                if (toggleButton) toggleButton.textContent = 'Show Files';
                return;
            }
@@ -706,7 +709,8 @@
        function setupFileInput(inputId) {
            const fileInput = dom[inputId];
            const fileListElement = dom[`${inputId.replace('-', 'L')}List`];
-           const toggleButton = fileInput.nextElementSibling; // The button is next to the input
+           const parentDiv = fileInput.closest('.flex.items-center'); // Find the containing div
+           const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null; // Find the button within that div
 
            // Handle file selection
            fileInput.addEventListener('change', (event) => {
