@@ -719,8 +719,11 @@
                return;
            }
 
-           const parentDiv = fileInput.closest('.flex.items-center'); // This should now correctly find the parent div
-           const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null; // Find the button within that div
+           // Correctly find the parent div (which contains both file input and toggle button)
+           // The structure is: <div> <label> <textarea> <div.flex.items-center> <input> <button> </div> <ul>
+           // So, fileInput.parentNode is the <div.flex.items-center>
+           const parentDiv = fileInput.parentNode;
+           const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null;
 
            // Handle file selection
            fileInput.addEventListener('change', (event) => {
