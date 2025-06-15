@@ -62,7 +62,6 @@
            <p class="text-center mt-2 text-purple-200">
                Automate essay evaluation based on your specific criteria.
            </p>
-           <!-- User ID display removed as Firebase Auth is no longer used -->
        </header>
 
        <main class="p-6 space-y-8">
@@ -206,7 +205,7 @@
        </main>
 
        <footer class="bg-purple-700 text-white p-4 text-center rounded-b-3xl text-sm">
-           Powered by Groq AI
+           Powered by Google Gemini AI
        </footer>
    </div>
 
@@ -218,12 +217,13 @@
    </script>
 
    <script type="module">
-       // All Firebase imports removed
+       let googleApiKey = null; // Will store the fetched Google API key
 
-       let groqApiKey = null; // Will store the fetched Groq API key
-
-       // Minimum length for text inputs to prevent AI hallucination on sparse data
-       const MIN_INPUT_LENGTH = 1; // Minimum characters required for instructions, rubric, essay
+       // Define preferred models with a fallback order
+       const GEMINI_MODELS = [
+           "gemini-2.0-flash-lite", // Top priority: Fastest and most cost-efficient
+           "gemini-2.5-flash-preview-05-20" // Fallback: Newer, powerful multimodal model (might have different preview limits)
+       ];
 
        // DOM Elements
        const dom = {
@@ -242,7 +242,6 @@
            successTextSpan: document.getElementById('success-text'),
            gradeResultDiv: document.getElementById('grade-result'),
            resultContentDiv: document.getElementById('result-content'),
-           // userIdDisplay: document.getElementById('user-id-display'), // Removed
            strictnessMeter: document.getElementById('strictness-meter'),
            strictnessValueDisplay: document.getElementById('strictness-value'),
        };
@@ -293,7 +292,7 @@
 
 
        /**
-        * Fetches application configurations (Groq API key)
+        * Fetches application configurations (Google API key)
         * from the Vercel serverless function.
         */
        async function fetchAppConfigs() {
@@ -310,25 +309,20 @@
                    throw new Error(`Failed to fetch application configs: ${errorMsg}`);
                }
                const data = await response.json();
-               // Now, get-configs.js only returns 'groqApiKey'
-               if (data.groqApiKey) {
-                   groqApiKey = data.groqApiKey;
-                   console.log("App configs fetched successfully (Groq key).");
+               if (data.googleApiKey) {
+                   googleApiKey = data.googleApiKey;
+                   console.log("App configs fetched successfully (Google API key).");
                } else {
                    throw new Error("Essential app configs not found in response (check serverless function's return data).");
                }
            } catch (error) {
                console.error("Error fetching application configs:", error);
                displayError(`Application error: Could not load essential configurations. ${error.message}`);
-               // Disable grading button if configs aren't available
                dom.gradeButton.disabled = true;
                dom.gradeButton.classList.add('bg-purple-400', 'cursor-not-allowed');
                dom.gradeButton.textContent = 'Error Loading App Configs';
            }
        }
-
-
-       // initializeFirebase function removed
 
        /**
         * Toggles the loading indicator and button state.
@@ -336,16 +330,15 @@
         */
        function toggleLoading(isLoading) {
            dom.loadingIndicator.classList.toggle('hidden', !isLoading);
-           // Button now only depends on groqApiKey availability and loading state
-           dom.gradeButton.disabled = isLoading || !groqApiKey;
-           dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !groqApiKey);
-           dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !groqApiKey);
-           dom.gradeButton.classList.toggle('bg-purple-600', !(isLoading || !groqApiKey));
-           dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !groqApiKey));
-           dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !groqApiKey));
+           dom.gradeButton.disabled = isLoading || !googleApiKey;
+           dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !googleApiKey);
+           dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !googleApiKey);
+           dom.gradeButton.classList.toggle('bg-purple-600', !(isLoading || !googleApiKey));
+           dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !googleApiKey));
+           dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !googleApiKey));
 
            let buttonText = 'Grade Essay';
-           if (!groqApiKey) { // Only check groqApiKey
+           if (!googleApiKey) {
                buttonText = 'Loading App Configs...';
            } else if (isLoading) {
                buttonText = `<span class="flex items-center justify-center">
@@ -381,7 +374,8 @@
                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
                            let fullText = '';
                            for (let i = 1; i <= pdf.numPages; i++) {
-                               const page = await page.getTextContent();
+                               const page = await pdf.getPage(i);
+                               const textContent = await page.getTextContent();
                                fullText += textContent.items.map(item => item.str).join(' ') + '\n';
                            }
                            resolve({ type: 'text', content: fullText, sourceType: 'pdf' });
@@ -404,34 +398,13 @@
        }
 
        /**
-        * Helper to add content (text or image) to prompt parts for chatHistory.
-        * @param {Array<Object>} partsArray The array to add parts to.
-        * @param {{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' | 'textarea' }} data The content data object.
-        * @param {string} label The label for this content (e.g., "Essay Instructions").
-        * @param {boolean} isMainEssay True if this is the primary essay content.
-        */
-       const addInputToChatHistory = (partsArray, data, label, isMainEssay = false) => {
-           if (data.type === 'text' && data.content) {
-               let prefix = `\n${label}:\n`;
-               if (data.sourceType === 'pdf') {
-                   prefix += `(Note: This was provided as a PDF. While text has been extracted, any embedded images or graphs within the PDF are NOT directly visible to me and will not be graded as visual elements. I will grade based on the extracted text.)\n`;
-               }
-               partsArray.push({ role: 'user', content: `${prefix}${data.content}\n` });
-           } else if (data.type === 'image' && data.imageData) {
-               partsArray.push({ role: 'user', content: `\n${label} (from image): Please refer to the content in the following image. [Image content is present but will be processed as text description if model is text-only.]` });
-               partsArray.push({ role: 'user', content: "\n" });
-           }
-       };
-
-       /**
         * Handles the essay grading process.
         */
        async function gradeEssay() {
            hideError();
            hideSuccessMessage();
 
-           // Check if Groq API key is available
-           if (!groqApiKey) {
+           if (!googleApiKey) {
                displayError("Application not fully loaded. Please wait or refresh the page.");
                return;
            }
@@ -459,12 +432,7 @@
                return;
            }
 
-           // --- Input Validation ---
-           const validateTextInput = (data, fieldName) => {
-               if (data.type === 'text' && data.content && data.content.length < MIN_INPUT_LENGTH) {
-                   displayError(`${fieldName} must be at least ${MIN_INPUT_LENGTH} characters long.`);
-                   return false;
-               }
+           const validateContentPresence = (data, fieldName) => {
                if (!data.content && (!data.imageData || !data.imageData.data)) {
                     displayError(`Please provide ${fieldName} (text or file).`);
                     return false;
@@ -472,13 +440,12 @@
                return true;
            };
 
-           if (!validateTextInput(instructionsContent, "Essay Instructions") ||
-               !validateTextInput(rubricContent, "Grading Rubric") ||
-               !validateTextInput(essayContent, "Essay Text")) {
+           if (!validateContentPresence(instructionsContent, "Essay Instructions") ||
+               !validateContentPresence(rubricContent, "Grading Rubric") ||
+               !validateContentPresence(essayContent, "Essay Text")) {
                toggleLoading(false);
                return;
            }
-           // --- End Input Validation ---
 
            await processGrading(instructionsContent, rubricContent, essayContent, extraInstructions, strictness);
        }
@@ -501,29 +468,49 @@
                Provide a detailed grade and feedback, addressing each point of the rubric.
            `;
 
-           let fullUserInputContent = "";
+           const baseContents = [];
 
-           const appendContent = (data, label, isMainEssay = false) => {
+           // System-like prompt incorporated into the first user part
+           baseContents.push({
+               role: "user",
+               parts: [{ text: systemPromptContent }]
+           });
+
+           // Helper to add content (text or image) to Gemini's 'parts' array
+           const addContentToGeminiParts = (data, label) => {
                if (data.type === 'text' && data.content) {
                    let prefix = `\n${label}:\n`;
                    if (data.sourceType === 'pdf') {
                        prefix += `(Note: This was provided as a PDF. While text has been extracted, any embedded images or graphs within the PDF are NOT directly visible to me and will not be graded as visual elements. I will grade based on the extracted text.)\n`;
                    }
-                   fullUserInputContent += `${prefix}${data.content}\n`;
+                   baseContents.push({ role: 'user', parts: [{ text: `${prefix}${data.content}\n` }] });
                } else if (data.type === 'image' && data.imageData) {
-                   fullUserInputContent += `\n${label} (from image): Please refer to the content in the following image. [Image content is present but will be processed as text description if model is text-only.]` ;
-                   fullUserInputContent += `\n`;
+                   baseContents.push({
+                       role: 'user',
+                       parts: [
+                           { text: `\n${label} (from image): Please refer to the content in this image.` },
+                           {
+                               inlineData: {
+                                   mimeType: data.imageData.mimeType,
+                                   data: data.imageData.data
+                               }
+                           }
+                       ]
+                   });
                }
            };
 
-           appendContent(instructionsData, "Essay Instructions");
-           appendContent(rubricData, "Grading Rubric");
+           addContentToGeminiParts(instructionsData, "Essay Instructions");
+           addContentToGeminiParts(rubricData, "Grading Rubric");
            if (extraInstructions) {
-               fullUserInputContent += `\nExtra Grading Instructions for AI:\n${extraInstructions}\n`;
+               baseContents.push({ role: 'user', parts: [{ text: `\nExtra Grading Instructions for AI:\n${extraInstructions}\n` }] });
            }
-           appendContent(essayData, "Essay to be Graded", true);
+           addContentToGeminiParts(essayData, "Essay to be Graded"); // Essay is the main subject
 
-           fullUserInputContent += `
+           // Add the final formatting instruction as part of the user's last turn or a new one
+           baseContents.push({
+               role: "user",
+               parts: [{ text: `
                ---
                Please provide your feedback and grade in the following structured Markdown format. Use extra line breaks where appropriate to improve readability between sections and paragraphs.
 
@@ -550,55 +537,63 @@
 
                ## What to Work On to Improve:
                [Provide clear, actionable steps for improvement. Use numbered lists or bulleted lists for clarity. Each point should be a specific suggestion based on the weaknesses identified in the detailed feedback. Ensure good vertical spacing between points.]
-           `;
+           `}]
+           });
 
+           let lastError = null;
 
-           const payload = {
-               messages: [
-                   { role: "system", content: systemPromptContent },
-                   { role: "user", content: fullUserInputContent }
-               ],
-               model: "llama3-8b-8192",
-               temperature: 0.7,
-               max_tokens: 2048,
-           };
+           for (const modelId of GEMINI_MODELS) {
+               console.log(`Attempting to grade with model: ${modelId}`);
+               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${googleApiKey}`;
 
-           const apiUrl = `https://api.groq.com/openai/v1/chat/completions`;
+               try {
+                   const response = await fetch(apiUrl, {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({ contents: baseContents })
+                   });
 
-           try {
-               const response = await fetch(apiUrl, {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/json',
-                       'Authorization': `Bearer ${groqApiKey}`
-                   },
-                   body: JSON.stringify(payload)
-               });
+                   if (!response.ok) {
+                       const errorData = await response.json();
+                       const errorMessage = errorData.error?.message || JSON.stringify(errorData) || 'Unknown error from Gemini';
+                       lastError = new Error(`Google Gemini API error with ${modelId}: ${response.status} - ${errorMessage}`);
+                       console.error(lastError.message);
+                       // If the error is a rate limit or a model-specific failure, try the next model
+                       if (response.status === 429 || errorMessage.includes("resource exhausted") || errorMessage.includes("model unavailable")) {
+                           continue; // Try the next model
+                       } else {
+                           // For other types of errors, stop and display
+                           throw lastError;
+                       }
+                   }
 
-               if (!response.ok) {
-                   const errorData = await response.json();
-                   throw new Error(`Groq API error: ${response.status} - ${errorData.error?.message || JSON.stringify(errorData) || 'Unknown error from Groq'}`);
+                   const result = await response.json();
+
+                   if (result.candidates && result.candidates.length > 0 &&
+                       result.candidates[0].content && result.candidates[0].content.parts &&
+                       result.candidates[0].content.parts.length > 0) {
+                       const text = result.candidates[0].content.parts[0].text;
+                       dom.resultContentDiv.innerHTML = marked.parse(text);
+                       dom.gradeResultDiv.classList.remove('hidden');
+                       displaySuccessMessage(`Essay graded successfully using ${modelId}!`);
+                       return; // Exit function if successful
+                   } else {
+                       lastError = new Error(`Could not get a valid response from Google Gemini AI using ${modelId}. Unexpected response structure.`);
+                       console.error(lastError.message);
+                       continue; // Try the next model if response structure is unexpected
+                   }
+               } catch (err) {
+                   lastError = new Error(`Failed to grade essay with ${modelId}: ${err.message}.`);
+                   console.error(lastError.message);
+                   continue; // Try the next model on network/fetch errors
                }
-
-               const result = await response.json();
-
-               if (result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
-                   const text = result.choices[0].message.content;
-                   dom.resultContentDiv.innerHTML = marked.parse(text);
-                   dom.gradeResultDiv.classList.remove('hidden');
-                   displaySuccessMessage("Essay graded successfully!");
-
-                   // Firestore saving logic removed
-               } else {
-                   displayError("Could not get a valid response from Groq AI. Please try again.");
-                   console.error("Unexpected Groq API response structure:", result);
-               }
-           } catch (err) {
-               console.error("Error grading essay with Groq:", err);
-               displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
-           } finally {
-               toggleLoading(false);
            }
+
+           // If all models failed
+           displayError(`Failed to grade essay after trying all available models. Last error: ${lastError ? lastError.message : "Unknown error."}`);
+           toggleLoading(false); // Ensure loading is off if all models fail
        }
 
        // Function to clear all textareas and hide previous results
@@ -630,7 +625,6 @@
            dom.gradeButton.parentNode.insertBefore(clearButton, dom.gradeButton.nextSibling);
 
            await fetchAppConfigs();
-           // initializeFirebase() call removed
            toggleLoading(false);
        }
 
