@@ -60,8 +60,7 @@
        <header class="bg-purple-700 text-white p-6 rounded-t-3xl shadow-md">
            <h1 class="text-3xl font-bold text-center">AI Essay Grader</h1>
            <p class="text-center mt-2 text-purple-200">
-               Automate essay evaluation based on your specific criteria. <br><br>
-               Might struggle with visual elements.
+               Automate essay evaluation based on your specific criteria.
            </p>
            <p id="user-id-display" class="text-center mt-2 text-purple-200 text-sm hidden"></p>
        </header>
@@ -202,7 +201,7 @@
        </main>
 
        <footer class="bg-purple-700 text-white p-4 text-center rounded-b-3xl text-sm">
-           Powered by Gemini AI
+           Powered by Groq API
        </footer>
    </div>
 
@@ -218,9 +217,23 @@
        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-       // Global variables from Canvas environment
-       const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+       // Firebase configuration (REPLACE WITH YOUR OWN FIREBASE CONFIG FOR DEPLOYMENT)
+       // When running in the Canvas environment, __firebase_config is provided.
+       // For GitHub Pages/Vercel deployment, you MUST replace the content of 'myFirebaseConfig'
+       // with your actual Firebase project's config object.
+       const myFirebaseConfig = {
+            apiKey: "AIzaSyCB56L6XZrCqfQlTWoV6_qegxHf_NYXrjQ",
+            authDomain: "litgrader.firebaseapp.com",
+            projectId: "litgrader",
+            storageBucket: "litgrader.firebasestorage.app",
+            messagingSenderId: "646653876601",
+            appId: "1:646653876601:web:69d1d8280acf11a1c0f7a8",
+            measurementId: "G-Y7M7M022DY" // Optional: Include if present in your Firebase config
+       };
+
+       const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myFirebaseConfig;
        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
 
        // Firebase instances
        let app, db, auth, currentUserId = null;
@@ -285,6 +298,13 @@
         */
        async function initializeFirebase() {
            try {
+               // Log which Firebase config is being used for debugging
+               if (typeof __firebase_config !== 'undefined') {
+                   console.log("Initializing Firebase with Canvas-provided config.");
+               } else {
+                   console.log("Initializing Firebase with user-defined config (for deployment).");
+               }
+
                app = initializeApp(firebaseConfig);
                db = getFirestore(app);
                auth = getAuth(app);
@@ -297,6 +317,7 @@
                        console.log("Firebase authenticated with user ID:", currentUserId);
                    } else {
                        try {
+                           // __initial_auth_token is only available in Canvas. For external deploy, use anonymous.
                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                                await signInWithCustomToken(auth, __initial_auth_token);
                            } else {
