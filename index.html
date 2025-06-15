@@ -561,8 +561,8 @@
 
                ${extraInstructions ? `
                ---
-               ***CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ESSAY:***
-               ***ATTENTION: The following instructions MUST be given highest priority and followed diligently.***
+               ***URGENT: CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ESSAY!***
+               ***Please pay extremely close attention to the following and prioritize them above all other general grading guidelines:***
                ${extraInstructions}
                ***END OF CRITICAL INSTRUCTIONS.***
                ---
@@ -665,7 +665,7 @@
                console.error(`Error grading essay with ${PRIMARY_GEMINI_MODEL}:`, err);
                displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
            }
-           // The finally block in gradeEssay will handle enabling the button.
+           // The finally block in gradeEssay (the calling function) will handle enabling the button.
        }
 
        // --- File Attachment Handling ---
