@@ -4,23 +4,22 @@
 // and securely sends it to your frontend application.
 
 export default function handler(request, response) {
-    // Check if the environment variable is set.
-    // In a production environment, Vercel will inject process.env.GROQ_API
-    // based on the environment variable you configure in your Vercel project settings.
     const apiKey = process.env.GROQ_API;
 
+    // IMPORTANT: For debugging, log the API key received by the serverless function.
+    // This will appear in your Vercel deployment logs.
+    console.log('API Key retrieved by serverless function:', apiKey ? 'Key is present' : 'Key is NOT present');
+    if (apiKey && apiKey.length > 5) { // Log a partial key for verification, avoid logging full key
+        console.log('Partial API Key:', apiKey.substring(0, 5) + '...');
+    }
+
     if (apiKey) {
-        // Send the API key back to the client.
-        // It's important to set appropriate CORS headers if your frontend is on a different domain.
-        // For simplicity with Vercel hosting same-origin, this might not be strictly necessary,
-        // but it's good practice for API endpoints.
-        response.setHeader('Access-Control-Allow-Origin', '*'); // Adjust this for production to your specific frontend domain
+        response.setHeader('Access-Control-Allow-Origin', '*'); // Consider restricting this in production
         response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
         response.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
         response.status(200).json({ apiKey: apiKey });
     } else {
-        // Handle case where API key is not set.
-        response.status(500).json({ error: 'API key not configured.' });
+        response.status(500).json({ error: 'API key not configured in Vercel environment variables.' });
     }
 }
