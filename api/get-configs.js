@@ -1,22 +1,22 @@
 // api/get-configs.js
-// This Vercel Serverless Function now securely provides ONLY the Groq API key
+// This Vercel Serverless Function now securely provides ONLY the Google API key
 // from environment variables.
 
 export default function handler(request, response) {
-    // Read environment variable for Groq API key
-    const groqApiKey = process.env.GROQ_API;
+    // Read environment variable for Google API key
+    const googleApiKey = process.env.GOOGLE_API;
 
     // --- DEBUGGING LOGS (for Vercel runtime logs) ---
-    console.log('--- Serverless Function Config Check (No Firebase) ---');
-    console.log('GROQ_API (groqApiKey):', groqApiKey ? `[Present] ${groqApiKey.substring(0, 5)}...` : '[NOT SET]');
+    console.log('--- Serverless Function Config Check ---');
+    console.log('GOOGLE_API (googleApiKey):', googleApiKey ? `[Present] ${googleApiKey.substring(0, 5)}...` : '[NOT SET]');
     console.log('----------------------------------------------------');
     // --- END DEBUGGING LOGS ---
 
 
-    // Basic validation for essential keys (only Groq API key now)
-    if (!groqApiKey) {
-        console.error('Missing essential API key in environment variables: GROQ_API is [NOT SET]');
-        response.status(500).json({ error: 'Server configuration error: Groq API key missing.' });
+    // Basic validation for essential keys (only Google API key now)
+    if (!googleApiKey) {
+        console.error('Missing essential API key in environment variables: GOOGLE_API is [NOT SET]');
+        response.status(500).json({ error: 'Server configuration error: Google API key missing.' });
         return;
     }
 
@@ -26,6 +26,6 @@ export default function handler(request, response) {
     response.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
     response.status(200).json({
-        groqApiKey: groqApiKey // Changed property name to groqApiKey for clarity
+        googleApiKey: googleApiKey // Changed property name to googleApiKey
     });
 }
