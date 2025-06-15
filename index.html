@@ -3,7 +3,7 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>AI Essay Grader</title>
+   <title>Assignment Grader</title>
    <!-- Tailwind CSS CDN -->
    <script src="https://cdn.tailwindcss.com"></script>
    <!-- Inter Font -->
@@ -20,7 +20,7 @@
        /* Fix for text overflow within prose content */
        .prose {
            word-break: break-word;
-           overflow-wrap: break-break-word;
+           overflow-wrap: break-word;
        }
        input[type="range"] {
            -webkit-appearance: none;
@@ -69,12 +69,13 @@
            display: flex;
            align-items: center;
            justify-content: space-between;
-           background-color: #f3e8ff; /* purple-50 */
+           background-color: #ede9fe; /* new: indigo-100 for lighter shade */
            padding: 6px 12px;
-           border-radius: 6px;
+           border-radius: 8px; /* Slightly more rounded */
            margin-bottom: 4px;
            font-size: 0.9em;
-           color: #5b21b6; /* purple-700 */
+           color: #4c1d95; /* new: indigo-900 */
+           box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Subtle shadow */
        }
        .file-list-item button {
            background: none;
@@ -85,30 +86,35 @@
            margin-left: 8px;
            font-size: 1.2em;
            line-height: 1;
+           transition: color 0.2s ease;
        }
        .file-list-item button:hover {
            color: #581c87; /* purple-900 */
        }
+       /* Additional styling for general elements */
+       .shadow-xl-custom {
+           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+       }
    </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200 p-4 sm:p-6 lg:p-8 antialiased">
-   <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
-       <header class="bg-purple-700 text-white p-6 rounded-t-3xl shadow-md">
-           <h1 class="text-3xl font-bold text-center">AI Essay Grader</h1>
-           <p class="text-center mt-2 text-purple-200">
-               Automate essay evaluation based on your specific criteria.
+   <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl-custom overflow-hidden border border-purple-200">
+       <header class="bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-6 rounded-t-3xl shadow-lg">
+           <h1 class="text-4xl font-bold text-center drop-shadow-md">Assignment Grader</h1>
+           <p class="text-center mt-2 text-purple-200 text-lg">
+               Automate assignment evaluation based on your specific criteria.
            </p>
        </header>
 
        <main class="p-6 space-y-8">
-           <div class="space-y-4">
+           <div class="space-y-6">
                <div>
                    <label for="instructions" class="block text-lg font-semibold text-gray-800 mb-2">
-                       Essay Instructions (or upload files):
+                       Assignment Instructions (or upload files):
                    </label>
                    <textarea
                        id="instructions"
-                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-32 resize-y mb-4"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-32 resize-y mb-4 bg-gray-50"
                        placeholder="E.g., 'Write a persuasive essay arguing for or against the use of renewable energy sources. The essay should be 500-700 words and include at least three supporting arguments.'"
                    ></textarea>
                    <div class="flex items-center mb-2">
@@ -121,10 +127,10 @@
                                  file:mr-4 file:py-2 file:px-4
                                  file:rounded-full file:border-0
                                  file:text-sm file:font-semibold
-                                 file:bg-purple-50 file:text-purple-700
-                                 hover:file:bg-purple-100"
+                                 file:bg-purple-100 file:text-purple-700
+                                 hover:file:bg-purple-200 transition duration-150 ease-in-out"
                        />
-                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">Show Files</button>
+                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition duration-150 ease-in-out">Show Files</button>
                    </div>
                    <ul id="instructions-file-list" class="file-list"></ul>
                    <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. Both typed text and uploaded file contents will be sent to the AI. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your instructions are an image, please upload it as a standalone JPG/PNG/etc.**</p>
@@ -136,7 +142,7 @@
                    </label>
                    <textarea
                        id="rubric"
-                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-48 resize-y mb-4"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-48 resize-y mb-4 bg-gray-50"
                        placeholder="E.g., 'Content (40%): Thesis clarity, development of arguments, evidence. Organization (30%): Introduction, body paragraphs, conclusion, transitions. Language (20%): Grammar, spelling, vocabulary, sentence structure. Originality (10%): Unique insights, critical thinking.'"
                    ></textarea>
                    <div class="flex items-center mb-2">
@@ -149,10 +155,10 @@
                                  file:mr-4 file:py-2 file:px-4
                                  file:rounded-full file:border-0
                                  file:text-sm file:font-semibold
-                                 file:bg-purple-50 file:text-purple-700
-                                 hover:file:bg-purple-100"
+                                 file:bg-purple-100 file:text-purple-700
+                                 hover:file:bg-purple-200 transition duration-150 ease-in-out"
                        />
-                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">Show Files</button>
+                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition duration-150 ease-in-out">Show Files</button>
                    </div>
                    <ul id="rubric-file-list" class="file-list"></ul>
                    <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. Both typed text and uploaded file contents will be sent to the AI. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your rubric is an image, please upload it as a standalone JPG/PNG/etc.**</p>
@@ -160,12 +166,12 @@
 
                <div>
                    <label for="essay" class="block text-lg font-semibold text-gray-800 mb-2">
-                       Essay Text (or upload files):
+                       Assignment Text (or upload files):
                    </label>
                    <textarea
                        id="essay"
-                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-64 resize-y mb-4"
-                       placeholder="Paste the essay text here..."
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-64 resize-y mb-4 bg-gray-50"
+                       placeholder="Paste the assignment text here..."
                    ></textarea>
                    <div class="flex items-center mb-2">
                        <input
@@ -177,32 +183,35 @@
                                  file:mr-4 file:py-2 file:px-4
                                  file:rounded-full file:border-0
                                  file:text-sm file:font-semibold
-                                 file:bg-purple-50 file:text-purple-700
-                                 hover:file:bg-purple-100"
+                                 file:bg-purple-100 file:text-purple-700
+                                 hover:file:bg-purple-200 transition duration-150 ease-in-out"
                        />
-                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">Show Files</button>
+                       <button type="button" class="toggle-file-list-button ml-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition duration-150 ease-in-out">Show Files</button>
                    </div>
                    <ul id="essay-file-list" class="file-list"></ul>
-                   <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. For essay files, .doc and .docx are also accepted, but conversion may vary. Both typed text and uploaded file contents will be sent to the AI. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your essay includes crucial visual elements (like graphs) or is a scanned image, please upload it as a standalone JPG/PNG/etc. to ensure the AI can analyze it.**</p>
+                   <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. For assignment files, .doc and .docx are also accepted, but conversion may vary. Both typed text and uploaded file contents will be sent to the AI. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your assignment includes crucial visual elements (like graphs) or is a scanned image, please upload it as a standalone JPG/PNG/etc. to ensure the AI can analyze it.**</p>
                </div>
 
                <!-- Extra AI Instructions -->
-               <div>
-                   <label for="extra-instructions" class="block text-lg font-semibold text-gray-800 mb-2">
-                       Extra AI Instructions (Optional):
+               <div class="border border-purple-300 rounded-lg p-4 bg-purple-50 shadow-inner">
+                   <label for="extra-instructions" class="block text-lg font-semibold text-purple-800 mb-2">
+                       ✨ Extra AI Instructions (Optional, **Highly Emphasized**):
                    </label>
                    <textarea
                        id="extra-instructions"
-                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-24 resize-y"
-                       placeholder="E.g., 'Pay close attention to the originality of ideas and deduct points for any common clichés.' or 'Focus only on grammar and spelling, ignore content for this grade.'"
+                       class="w-full p-3 border border-purple-400 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-28 resize-y bg-white"
+                       placeholder="E.g., 'Pay close attention to the originality of ideas and deduct points for any common clichés.' or 'Focus only on grammar and spelling, ignore content for this grade.' These instructions will be given high priority by the AI."
                    ></textarea>
-                   <p class="text-sm text-gray-500 mt-2">Provide any additional specific instructions for the AI on how to grade the essay.</p>
+                   <p class="text-sm text-purple-700 mt-2">
+                       Use this section for any specific, overriding directives for the AI's grading process.
+                       **The AI will be explicitly instructed to prioritize these comments.**
+                   </p>
                </div>
 
                <!-- Grading Strictness Meter -->
-               <div class="mt-6">
-                   <label for="strictness-meter" class="block text-lg font-semibold text-gray-800 mb-2">
-                       Grading Strictness: <span id="strictness-value" class="text-purple-700 font-bold">3</span>
+               <div class="mt-6 p-4 bg-indigo-50 rounded-lg shadow-md border border-indigo-200">
+                   <label for="strictness-meter" class="block text-lg font-semibold text-indigo-800 mb-2">
+                       Grading Strictness: <span id="strictness-value" class="text-indigo-700 font-bold">3</span>
                    </label>
                    <input
                        type="range"
@@ -213,12 +222,12 @@
                        step="1"
                        class="w-full"
                    />
-                   <div class="flex justify-between text-sm text-gray-600 mt-2">
+                   <div class="flex justify-between text-sm text-indigo-600 mt-2">
                        <span>Lenient (1)</span>
                        <span>Normal (3)</span>
                        <span>Strict (5)</span>
                    </div>
-                   <p class="text-sm text-gray-500 mt-2">
+                   <p class="text-sm text-gray-600 mt-2">
                        A higher strictness will make the AI more critical of mistakes and deduct points more rigorously.
                    </p>
                </div>
@@ -227,7 +236,7 @@
                    id="grade-button"
                    class="w-full py-3 px-6 rounded-lg text-white font-bold text-lg shadow-lg transform transition duration-300 bg-purple-600 hover:bg-purple-700 active:scale-95"
                >
-                   Grade Essay
+                   Grade Assignment
                </button>
 
                <div id="loading-indicator" class="hidden flex items-center justify-center py-3">
@@ -248,14 +257,14 @@
                    <span id="success-text" class="block sm:inline"></span>
                </div>
 
-               <div id="grade-result" class="hidden bg-purple-50 p-6 rounded-lg shadow-inner mt-6">
+               <div id="grade-result" class="hidden bg-purple-50 p-6 rounded-lg shadow-inner mt-6 border border-purple-200">
                    <h2 class="text-2xl font-bold text-purple-800 mb-4">Grading Results:</h2>
                    <div id="result-content" class="prose max-w-none text-gray-700 leading-relaxed"></div>
                </div>
            </div>
        </main>
 
-       <footer class="bg-purple-700 text-white p-4 text-center rounded-b-3xl text-sm">
+       <footer class="bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-4 text-center rounded-b-3xl text-sm">
            Powered by Google Gemini AI
        </footer>
    </div>
@@ -283,9 +292,9 @@
            'rubric-file': document.getElementById('rubric-file'), // file input
            'rubric-file-list': document.getElementById('rubric-file-list'), // ul for file list
 
-           essay: document.getElementById('essay'), // textarea
-           'essay-file': document.getElementById('essay-file'), // file input
-           'essay-file-list': document.getElementById('essay-file-list'), // ul for file list
+           essay: document.getElementById('essay'), // textarea (now 'assignment')
+           'essay-file': document.getElementById('essay-file'), // file input (now 'assignment-file')
+           'essay-file-list': document.getElementById('essay-file-list'), // ul for file list (now 'assignment-file-list')
 
            extraInstructionsTextarea: document.getElementById('extra-instructions'),
            gradeButton: document.getElementById('grade-button'),
@@ -304,7 +313,7 @@
        const attachedFiles = {
            'instructions-file': [],
            'rubric-file': [],
-           'essay-file': []
+           'essay-file': [] // Renamed to 'essay-file' in HTML, keep consistency here
        };
 
        // Update strictness value display as the slider moves
@@ -397,7 +406,7 @@
            dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !googleApiKey));
            dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !googleApiKey));
 
-           let buttonText = 'Grade Essay';
+           let buttonText = 'Grade Assignment'; // Changed button text
            if (!googleApiKey) {
                buttonText = 'Loading App Configs...';
            } else if (isLoading) {
@@ -487,9 +496,9 @@
        }
 
        /**
-        * Handles the essay grading process.
+        * Handles the assignment grading process.
         */
-       async function gradeEssay() {
+       async function gradeEssay() { // Function name remains 'gradeEssay' for simplicity
            hideError();
            hideSuccessMessage();
            dom.gradeResultDiv.classList.add('hidden'); // Hide previous results
@@ -509,7 +518,7 @@
                try {
                    instructionsData = await getProcessedSectionContent(dom.instructions, attachedFiles['instructions-file']);
                    rubricData = await getProcessedSectionContent(dom.rubric, attachedFiles['rubric-file']);
-                   essayData = await getProcessedSectionContent(dom.essay, attachedFiles['essay-file']);
+                   essayData = await getProcessedSectionContent(dom.essay, attachedFiles['essay-file']); // refers to the 'essay' elements now holding assignment data
                } catch (fileProcessingError) {
                    displayError(`File processing error: ${fileProcessingError.message}`);
                    return; // Stop execution if file processing fails
@@ -523,9 +532,9 @@
                    return true;
                };
 
-               if (!validateContentPresence(instructionsData, "Essay Instructions") ||
+               if (!validateContentPresence(instructionsData, "Assignment Instructions") ||
                    !validateContentPresence(rubricData, "Grading Rubric") ||
-                   !validateContentPresence(essayData, "Essay Text")) {
+                   !validateContentPresence(essayData, "Assignment Text")) {
                    return; // Stop execution if content is missing
                }
 
@@ -543,7 +552,7 @@
         * Sends the grading request to the AI and processes the response.
         * @param {{ combinedText: string, imageParts: Array<{ mimeType: string, data: string, filename: string }> }} instructionsData Instructions content.
         * @param {{ combinedText: string, imageParts: Array<{ mimeType: string, data: string, filename: string }> }} rubricData Rubric content.
-        * @param {{ combinedText: string, imageParts: Array<{ mimeType: string, data: string, filename: string }> }} essayData Essay content.
+        * @param {{ combinedText: string, imageParts: Array<{ mimeType: string, data: string, filename: string }> }} essayData Assignment content.
         * @param {string} extraInstructions Additional instructions for the AI.
         * @param {string} strictness The strictness level (1-5).
         */
@@ -554,14 +563,14 @@
            contents.push({
                role: "user",
                parts: [{ text: `
-               You are an AI essay grader. Your task is to evaluate an essay based on provided instructions and a specific rubric.
+               You are an AI assignment grader. Your task is to evaluate an assignment based on provided instructions and a specific rubric.
                Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
                A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
                A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
 
                ${extraInstructions ? `
                ---
-               ***URGENT: CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ESSAY!***
+               ***URGENT: CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ASSIGNMENT!***
                ***Please pay extremely close attention to the following and prioritize them above all other general grading guidelines:***
                ${extraInstructions}
                ***END OF CRITICAL INSTRUCTIONS.***
@@ -595,9 +604,9 @@
                }
            };
 
-           addSectionToGeminiContents(instructionsData, "ESSAY INSTRUCTIONS");
+           addSectionToGeminiContents(instructionsData, "ASSIGNMENT INSTRUCTIONS");
            addSectionToGeminiContents(rubricData, "GRADING RUBRIC");
-           addSectionToGeminiContents(essayData, "ESSAY TO BE GRADED");
+           addSectionToGeminiContents(essayData, "ASSIGNMENT TO BE GRADED"); // Label changed to Assignment
 
            // Add the final formatting instruction
            contents.push({
@@ -657,13 +666,13 @@
                    const text = result.candidates[0].content.parts[0].text;
                    dom.resultContentDiv.innerHTML = marked.parse(text);
                    dom.gradeResultDiv.classList.remove('hidden');
-                   displaySuccessMessage(`Essay graded successfully using ${PRIMARY_GEMINI_MODEL}!`);
+                   displaySuccessMessage(`Assignment graded successfully using ${PRIMARY_GEMINI_MODEL}!`);
                } else {
                    throw new Error(`Could not get a valid response from Google Gemini AI using ${PRIMARY_GEMINI_MODEL}. Unexpected response structure.`);
                }
            } catch (err) {
-               console.error(`Error grading essay with ${PRIMARY_GEMINI_MODEL}:`, err);
-               displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
+               console.error(`Error grading assignment with ${PRIMARY_GEMINI_MODEL}:`, err);
+               displayError(`Failed to grade assignment: ${err.message}. Please check your inputs and try again.`);
            }
            // The finally block in gradeEssay (the calling function) will handle enabling the button.
        }
@@ -758,7 +767,7 @@
        function clearInputs() {
            dom.instructions.value = '';
            dom.rubric.value = '';
-           dom.essay.value = '';
+           dom.essay.value = ''; // Clear assignment text area
            dom.extraInstructionsTextarea.value = '';
 
            // Clear file inputs and their displays
@@ -791,7 +800,7 @@
            // Setup file input listeners for all sections
            setupFileInput('instructions-file'); // Pass the actual HTML ID string
            setupFileInput('rubric-file');
-           setupFileInput('essay-file');
+           setupFileInput('essay-file'); // Use 'essay-file' as the ID refers to it in HTML
 
            await fetchAppConfigs();
            toggleLoading(false); // Initial state: not loading, button enabled
