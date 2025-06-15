@@ -558,7 +558,16 @@
                Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
                A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
                A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
-               ${extraInstructions ? `\n\nAdditional Instructions from User:\n${extraInstructions}\n` : ''}
+
+               ${extraInstructions ? `
+               ---
+               ***CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ESSAY:***
+               ***ATTENTION: The following instructions MUST be given highest priority and followed diligently.***
+               ${extraInstructions}
+               ***END OF CRITICAL INSTRUCTIONS.***
+               ---
+               ` : ''}
+
                Provide a detailed grade and feedback, addressing each point of the rubric.
                `}]
            });
@@ -656,6 +665,7 @@
                console.error(`Error grading essay with ${PRIMARY_GEMINI_MODEL}:`, err);
                displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
            }
+           // The finally block in gradeEssay will handle enabling the button.
        }
 
        // --- File Attachment Handling ---
