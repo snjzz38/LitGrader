@@ -20,7 +20,7 @@
        /* Fix for text overflow within prose content */
        .prose {
            word-break: break-word;
-           overflow-wrap: break-word;
+           overflow-wrap: word-break;
        }
        input[type="range"] {
            -webkit-appearance: none;
@@ -263,18 +263,26 @@
                // Assuming the Vercel function is deployed at /api/get-configs
                const response = await fetch('/api/get-configs');
                if (!response.ok) {
-                   const errorDetails = await response.json();
-                   throw new Error(`Failed to fetch application configs: ${response.status} - ${errorDetails.error || 'Unknown error'}`);
+                   // Attempt to parse error details if response is not OK
+                   let errorMsg = `HTTP Error: ${response.status}`;
+                   try {
+                       const errorData = await response.json();
+                       errorMsg = errorData.error || errorMsg;
+                   } catch (parseError) {
+                       // If parsing JSON fails, just use the status
+                       console.warn('Could not parse error response as JSON:', parseError);
+                   }
+                   throw new Error(`Failed to fetch application configs: ${errorMsg}`);
                }
                const data = await response.json();
                if (data.geminiApiKey && data.firebaseConfig) {
                    geminiApiKey = data.geminiApiKey;
                    // Assign the fetched Firebase config directly
-                   // Ensure the firebaseConfig object is updated with the fetched values
                    Object.assign(firebaseConfig, data.firebaseConfig);
                    console.log("App configs fetched successfully (Gemini key and Firebase config).");
                } else {
-                   throw new Error("Essential app configs not found in response.");
+                   // This means the function returned 200 OK, but without expected data
+                   throw new Error("Essential app configs not found in response (check serverless function's return data).");
                }
            } catch (error) {
                console.error("Error fetching application configs:", error);
@@ -406,7 +414,8 @@
                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
                            let fullText = '';
                            for (let i = 1; i <= pdf.numPages; i++) {
-                               const page = await page.getTextContent();
+                               const page = await pdf.getPage(i);
+                               const textContent = await page.getTextContent();
                                fullText += textContent.items.map(item => item.str).join(' ') + '\n';
                            }
                            resolve({ type: 'text', content: fullText, sourceType: 'pdf' });
