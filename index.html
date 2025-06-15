@@ -223,7 +223,7 @@
        let groqApiKey = null; // Will store the fetched Groq API key
 
        // Minimum length for text inputs to prevent AI hallucination on sparse data
-       const MIN_INPUT_LENGTH = 50; // Minimum characters required for instructions, rubric, essay
+       // const MIN_INPUT_LENGTH = 50; // Minimum characters required for instructions, rubric, essay - REMOVED
 
        // DOM Elements
        const dom = {
@@ -242,7 +242,6 @@
            successTextSpan: document.getElementById('success-text'),
            gradeResultDiv: document.getElementById('grade-result'),
            resultContentDiv: document.getElementById('result-content'),
-           // userIdDisplay: document.getElementById('user-id-display'), // Removed
            strictnessMeter: document.getElementById('strictness-meter'),
            strictnessValueDisplay: document.getElementById('strictness-value'),
        };
@@ -310,7 +309,6 @@
                    throw new Error(`Failed to fetch application configs: ${errorMsg}`);
                }
                const data = await response.json();
-               // Now, get-configs.js only returns 'groqApiKey'
                if (data.groqApiKey) {
                    groqApiKey = data.groqApiKey;
                    console.log("App configs fetched successfully (Groq key).");
@@ -320,15 +318,11 @@
            } catch (error) {
                console.error("Error fetching application configs:", error);
                displayError(`Application error: Could not load essential configurations. ${error.message}`);
-               // Disable grading button if configs aren't available
                dom.gradeButton.disabled = true;
                dom.gradeButton.classList.add('bg-purple-400', 'cursor-not-allowed');
                dom.gradeButton.textContent = 'Error Loading App Configs';
            }
        }
-
-
-       // initializeFirebase function removed
 
        /**
         * Toggles the loading indicator and button state.
@@ -336,7 +330,6 @@
         */
        function toggleLoading(isLoading) {
            dom.loadingIndicator.classList.toggle('hidden', !isLoading);
-           // Button now only depends on groqApiKey availability and loading state
            dom.gradeButton.disabled = isLoading || !groqApiKey;
            dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !groqApiKey);
            dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !groqApiKey);
@@ -345,7 +338,7 @@
            dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !groqApiKey));
 
            let buttonText = 'Grade Essay';
-           if (!groqApiKey) { // Only check groqApiKey
+           if (!groqApiKey) {
                buttonText = 'Loading App Configs...';
            } else if (isLoading) {
                buttonText = `<span class="flex items-center justify-center">
@@ -381,7 +374,8 @@
                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
                            let fullText = '';
                            for (let i = 1; i <= pdf.numPages; i++) {
-                               const page = await page.getTextContent();
+                               const page = await pdf.getPage(i);
+                               const textContent = await page.getTextContent();
                                fullText += textContent.items.map(item => item.str).join(' ') + '\n';
                            }
                            resolve({ type: 'text', content: fullText, sourceType: 'pdf' });
@@ -418,7 +412,7 @@
                }
                partsArray.push({ role: 'user', content: `${prefix}${data.content}\n` });
            } else if (data.type === 'image' && data.imageData) {
-               partsArray.push({ role: 'user', content: `\n${label} (from image): Please refer to the content in the following image. [Image content is present but will be processed as text description if model is text-only.]` });
+               partsArray.push({ role: 'user', content: `\n${label} (from image): Please refer to the content in the following image. [Image content is present but will be processed as text description if model is text-only.]` );
                partsArray.push({ role: 'user', content: "\n" });
            }
        };
@@ -430,7 +424,6 @@
            hideError();
            hideSuccessMessage();
 
-           // Check if Groq API key is available
            if (!groqApiKey) {
                displayError("Application not fully loaded. Please wait or refresh the page.");
                return;
@@ -459,12 +452,8 @@
                return;
            }
 
-           // --- Input Validation ---
-           const validateTextInput = (data, fieldName) => {
-               if (data.type === 'text' && data.content && data.content.length < MIN_INPUT_LENGTH) {
-                   displayError(`${fieldName} must be at least ${MIN_INPUT_LENGTH} characters long.`);
-                   return false;
-               }
+           // --- Input Validation (modified: removed minimum character length check) ---
+           const validateContentPresence = (data, fieldName) => {
                if (!data.content && (!data.imageData || !data.imageData.data)) {
                     displayError(`Please provide ${fieldName} (text or file).`);
                     return false;
@@ -472,9 +461,9 @@
                return true;
            };
 
-           if (!validateTextInput(instructionsContent, "Essay Instructions") ||
-               !validateTextInput(rubricContent, "Grading Rubric") ||
-               !validateTextInput(essayContent, "Essay Text")) {
+           if (!validateContentPresence(instructionsContent, "Essay Instructions") ||
+               !validateContentPresence(rubricContent, "Grading Rubric") ||
+               !validateContentPresence(essayContent, "Essay Text")) {
                toggleLoading(false);
                return;
            }
@@ -630,7 +619,6 @@
            dom.gradeButton.parentNode.insertBefore(clearButton, dom.gradeButton.nextSibling);
 
            await fetchAppConfigs();
-           // initializeFirebase() call removed
            toggleLoading(false);
        }
 
