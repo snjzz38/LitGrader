@@ -193,6 +193,11 @@
                    <span id="error-text" class="block sm:inline"></span>
                </div>
 
+               <div id="success-message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
+                   <strong class="font-bold">Success!</strong>
+                   <span id="success-text" class="block sm:inline"></span>
+               </div>
+
                <div id="grade-result" class="hidden bg-purple-50 p-6 rounded-lg shadow-inner mt-6">
                    <h2 class="text-2xl font-bold text-purple-800 mb-4">Grading Results:</h2>
                    <div id="result-content" class="prose max-w-none text-gray-700 leading-relaxed"></div>
@@ -242,6 +247,8 @@
            loadingIndicator: document.getElementById('loading-indicator'),
            errorMessageDiv: document.getElementById('error-message'),
            errorTextSpan: document.getElementById('error-text'),
+           successMessageDiv: document.getElementById('success-message'), // Added success message div
+           successTextSpan: document.getElementById('success-text'),     // Added success message span
            gradeResultDiv: document.getElementById('grade-result'),
            resultContentDiv: document.getElementById('result-content'),
            userIdDisplay: document.getElementById('user-id-display'),
@@ -253,6 +260,46 @@
        dom.strictnessMeter.addEventListener('input', () => {
            dom.strictnessValueDisplay.textContent = dom.strictnessMeter.value;
        });
+
+       /**
+        * Displays an error message to the user.
+        * @param {string} message The error message to display.
+        */
+       function displayError(message) {
+           hideSuccessMessage(); // Hide success message if an error occurs
+           dom.errorMessageDiv.classList.remove('hidden');
+           dom.errorTextSpan.textContent = message;
+       }
+
+       /**
+        * Hides the error message.
+        */
+       function hideError() {
+           dom.errorMessageDiv.classList.add('hidden');
+           dom.errorTextSpan.textContent = '';
+       }
+
+       /**
+        * Displays a success message to the user.
+        * @param {string} message The success message to display.
+        */
+       function displaySuccessMessage(message) {
+           hideError(); // Hide error message if success occurs
+           dom.successMessageDiv.classList.remove('hidden');
+           dom.successTextSpan.textContent = message;
+           setTimeout(() => {
+               hideSuccessMessage();
+           }, 5000); // Hide after 5 seconds
+       }
+
+       /**
+        * Hides the success message.
+        */
+       function hideSuccessMessage() {
+           dom.successMessageDiv.classList.add('hidden');
+           dom.successTextSpan.textContent = '';
+       }
+
 
        /**
         * Fetches application configurations (Groq API key and Firebase config)
@@ -348,23 +395,6 @@
        }
 
        /**
-        * Displays an error message to the user.
-        * @param {string} message The error message to display.
-        */
-       function displayError(message) {
-           dom.errorMessageDiv.classList.remove('hidden');
-           dom.errorTextSpan.textContent = message;
-       }
-
-       /**
-        * Hides the error message.
-        */
-       function hideError() {
-           dom.errorMessageDiv.classList.add('hidden');
-           dom.errorTextSpan.textContent = '';
-       }
-
-       /**
         * Toggles the loading indicator and button state.
         * @param {boolean} isLoading True to show loading, false to hide.
         */
@@ -451,18 +481,25 @@
                if (data.sourceType === 'pdf') {
                    prefix += `(Note: This was provided as a PDF. While text has been extracted, any embedded images or graphs within the PDF are NOT directly visible to me and will not be graded as visual elements. I will grade based on the extracted text.)\n`;
                }
-               partsArray.push({ role: 'user', content: `${prefix}${data.content}\n` }); // Use role for message parts
+               // Groq's API typically expects content directly as a string within the 'content' field for a 'user' role.
+               // Images for multimodal are handled differently if the model supports it.
+               partsArray.push({ role: 'user', content: `${prefix}${data.content}\n` });
            } else if (data.type === 'image' && data.imageData) {
-               partsArray.push({ role: 'user', content: `\n${label} (from image): Please refer to the content in the following image.` });
-               if (isMainEssay) {
-                   partsArray.push({ role: 'user', content: "I will read the text in this image and grade it based on the provided instructions and rubric." });
-               }
+               // For Groq with vision models (if enabled), images need to be structured in a specific way.
+               // For a simple text-based model (like llama3-8b-8192), we can only mention the image.
+               // If you switch to a Groq model with multimodal capabilities, this part needs review based on Groq's docs.
+               // For now, we're assuming text-based processing for essays.
+               partsArray.push({ role: 'user', content: `\n${label} (from image): Please refer to the content in the following image. [Image content is present but will be processed as text description if model is text-only.]` });
+               // If a Groq vision model were used, the image data would be part of a 'tool_code' or structured data in 'content'.
+               // Example for a hypothetical Groq vision model if it takes base64:
+               /*
                partsArray.push({
-                   type: 'image_url', // Changed for Groq's Vision compatibility if needed, but not directly used in chat completions
+                   type: 'image_url', // This is for OpenAI API, not standard Groq chat completions
                    image_url: {
                        url: `data:${data.imageData.mimeType};base64,${data.imageData.data}`
                    }
                });
+               */
                partsArray.push({ role: 'user', content: "\n" });
            }
        };
@@ -472,6 +509,8 @@
         */
        async function gradeEssay() {
            hideError();
+           hideSuccessMessage(); // Ensure success message is hidden on new grade attempt
+
            // Check if Groq API key and Firebase config are available
            if (!groqApiKey || !firebaseConfig.projectId) {
                displayError("Application not fully loaded. Please wait or refresh the page.");
@@ -558,13 +597,6 @@
                    if (isMainEssay) {
                        fullUserInputContent += " I will read the text in this image and grade it based on the provided instructions and rubric.";
                    }
-                   // For Groq with vision models (if enabled), images need to be structured in a specific way.
-                   // For a simple text-based model, we primarily rely on text description or assume pre-analysis.
-                   // Since Groq's chat completions API primarily takes text, if an image is uploaded for the essay,
-                   // we'd typically indicate its presence but the core text analysis would be paramount.
-                   // For this current setup, we're focusing on text input for the essay.
-                   // If vision is required for Groq, this `image_url` part needs a Groq-compatible structure,
-                   // and the model must support vision. For now, assume text-based grading as primary.
                    console.warn(`Image input for "${label}" is present but Groq's standard chat completions (llama, mixtral) primarily process text. Visual elements might not be fully utilized.`);
                    fullUserInputContent += ` [Image content for ${label} is present but will be processed as text description if model is text-only.]\n`;
                }
@@ -619,7 +651,7 @@
                // response_format: { type: "json_object" } // Use this if you need structured JSON output and adjust prompt
            };
 
-           const apiUrl = `https://api.groq.com/openai/v1/chat/completions`; // Groq's Chat Completions Endpoint
+           const apiUrl = `https://api.groq.com/openai/v1/chat/completions`; // Groq's Chat Completions Endpoint (OpenAI-compatible)
 
            try {
                const response = await fetch(apiUrl, {
@@ -643,23 +675,30 @@
                    const text = result.choices[0].message.content;
                    dom.resultContentDiv.innerHTML = marked.parse(text);
                    dom.gradeResultDiv.classList.remove('hidden');
+                   displaySuccessMessage("Essay graded successfully!"); // Show success message
 
                    // Save grading request to Firestore
                    // This part will only work if Firebase is fully initialized and authenticated
                    if (db && auth && currentUserId) {
-                       const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/grading_requests`, new Date().toISOString());
-                       await setDoc(docRef, {
-                           timestamp: new Date(),
-                           instructions: instructionsData.type === 'text' ? instructionsData.content : `[Content from ${instructionsData.sourceType} file]`,
-                           rubric: rubricData.type === 'text' ? rubricData.content : `[Content from ${rubricData.sourceType} file]`,
-                           essayText: essayData.type === 'text' ? essayData.content : null,
-                           essayImageMimeType: essayData.type === 'image' ? essayData.imageData.mimeType : null, // Record if image was used
-                           extraInstructions,
-                           strictness: strictness,
-                           groqModel: payload.model,
-                           response: text
-                       });
-                       console.log("Grading request saved to Firestore.");
+                       try {
+                           const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/grading_requests`, new Date().toISOString());
+                           await setDoc(docRef, {
+                               timestamp: new Date(),
+                               instructions: instructionsData.type === 'text' ? instructionsData.content : `[Content from ${instructionsData.sourceType} file]`,
+                               rubric: rubricData.type === 'text' ? rubricData.content : `[Content from ${rubricData.sourceType} file]`,
+                               essayText: essayData.type === 'text' ? essayData.content : null,
+                               essayImageMimeType: essayData.type === 'image' ? essayData.imageData.mimeType : null, // Record if image was used
+                               extraInstructions,
+                               strictness: strictness,
+                               groqModel: payload.model,
+                               response: text
+                           });
+                           console.log("Grading request saved to Firestore.");
+                       } catch (firestoreError) {
+                           console.error("Error saving grading request to Firestore:", firestoreError);
+                           // Display error to user but allow main grading success to show
+                           displayError(`Grading completed, but saving results failed: ${firestoreError.message}`);
+                       }
                    } else {
                        console.warn("Firestore not ready. Grading request not saved.");
                    }
@@ -672,13 +711,39 @@
                console.error("Error grading essay with Groq:", err);
                displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
            } finally {
+               // Ensure loading state is always reset regardless of success or failure
                toggleLoading(false);
            }
        }
 
+       // Function to clear all textareas and hide results
+       function clearInputs() {
+           dom.instructionsTextarea.value = '';
+           dom.rubricTextarea.value = '';
+           dom.essayTextarea.value = '';
+           dom.extraInstructionsTextarea.value = '';
+           dom.instructionsFileInput.value = ''; // Clear file inputs
+           dom.rubricFileInput.value = '';
+           dom.essayFileInput.value = '';
+           dom.gradeResultDiv.classList.add('hidden');
+           dom.resultContentDiv.innerHTML = '';
+           hideError();
+           hideSuccessMessage();
+           dom.strictnessMeter.value = 3; // Reset strictness
+           dom.strictnessValueDisplay.textContent = 3;
+       }
+
+
        // Main initialization function
        async function initApp() {
            dom.gradeButton.addEventListener('click', gradeEssay);
+           // Optional: Add a clear button
+           // const clearButton = document.createElement('button');
+           // clearButton.textContent = 'Clear All';
+           // clearButton.className = 'w-full py-3 px-6 rounded-lg bg-gray-200 text-gray-800 font-bold text-lg shadow-lg transform transition duration-300 hover:bg-gray-300 active:scale-95 mt-4';
+           // clearButton.addEventListener('click', clearInputs);
+           // dom.gradeButton.parentNode.insertBefore(clearButton, dom.gradeButton.nextSibling);
+
            await fetchAppConfigs(); // Fetch ALL app configs (Groq key + Firebase config) on app initialization
            initializeFirebase(); // Firebase will now initialize with the fetched config
            toggleLoading(false); // Ensure button is enabled after key fetch
