@@ -115,7 +115,7 @@
                    <textarea
                        id="instructions"
                        class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-32 resize-y mb-4 bg-gray-50"
-                       placeholder="E.g., 'Write a persuasive essay arguing for or against the use of renewable energy sources. The essay should be 500-700 words and include at least three supporting arguments.'"
+                       placeholder="E.g., 'Write a persuasive assignment arguing for or against the use of renewable energy sources. The assignment should be 500-700 words and include at least three supporting arguments.'"
                    ></textarea>
                    <div class="flex items-center mb-2">
                        <input
@@ -564,9 +564,13 @@
                role: "user",
                parts: [{ text: `
                You are an AI assignment grader. Your task is to evaluate an assignment based on provided instructions and a specific rubric.
-               Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
-               A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
-               A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
+
+               ---
+               Grading Strictness Level: ${strictness} (1 = Very Lenient, 5 = Very Strict).
+               - When strictness is **4 or 5 (Strict/Very Strict)**: Identify *all* errors, even minor ones. Be highly critical and apply **significant point deductions** for deviations from instructions, rubric, or quality standards. Focus on precision and flawlessness.
+               - When strictness is **2 or 3 (Lenient/Normal)**: Be more forgiving of minor errors. Focus on overall understanding, effort, and major concepts. Apply **fewer point deductions** for small imperfections, emphasizing growth and broader achievement.
+               - Tailor your feedback and numerical grade (if applicable) to reflect this chosen strictness, ensuring consistency in your scoring.
+               ---
 
                ${extraInstructions ? `
                ---
