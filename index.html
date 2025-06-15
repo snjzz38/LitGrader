@@ -471,7 +471,7 @@
                    if (fileData.type === 'text' && fileData.content) {
                        combinedText += `\n\n--- Start of File: ${fileData.filename} ---\n${fileData.content}\n--- End of File: ${fileData.filename} ---`;
                    } else if (fileData.type === 'image' && fileData.imageData) {
-                       imageParts.push({ ...fileData.imageData, filename: fileData.filename });
+                       imageParts.push({ ...fileData.imageData, filename: file.name }); // Use file.name for consistency
                    }
                } catch (error) {
                    errors.push(error.message);
@@ -538,8 +538,6 @@
                toggleLoading(false); // Always hide loading and re-enable button
            }
        }
-
-       const AI_TIMEOUT_MS = 120000; // 120 seconds timeout for AI generation
 
        /**
         * Sends the grading request to the AI and processes the response.
@@ -628,24 +626,13 @@
            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${PRIMARY_GEMINI_MODEL}:generateContent?key=${googleApiKey}`;
 
            try {
-               // Implement the 5-second timeout using a signal for the fetch request.
-               const controller = new AbortController();
-               const timeoutId = setTimeout(() => {
-                   controller.abort(); // Abort the fetch request after timeout
-                   // If the fetch is still pending, this will cause it to reject with an AbortError.
-                   // The catch block will then handle it.
-               }, AI_TIMEOUT_MS);
-
                const response = await fetch(apiUrl, {
                    method: 'POST',
                    headers: {
                        'Content-Type': 'application/json'
                    },
-                   body: JSON.stringify({ contents: contents }),
-                   signal: controller.signal // Link the AbortController to the fetch request
+                   body: JSON.stringify({ contents: contents })
                });
-
-               clearTimeout(timeoutId); // Clear the timeout if fetch resolves first
 
                if (!response.ok) {
                    const errorData = await response.json();
@@ -667,11 +654,7 @@
                }
            } catch (err) {
                console.error(`Error grading essay with ${PRIMARY_GEMINI_MODEL}:`, err);
-               if (err.name === 'AbortError') {
-                   displayError(`AI generation timed out after ${AI_TIMEOUT_MS / 1000} seconds. Please try again with different parameters or a simpler query.`);
-               } else {
-                   displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
-               }
+               displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
            }
        }
 
