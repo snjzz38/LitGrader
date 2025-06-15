@@ -186,20 +186,17 @@
                    <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. For essay files, .doc and .docx are also accepted, but conversion may vary. Both typed text and uploaded file contents will be sent to the AI. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your essay includes crucial visual elements (like graphs) or is a scanned image, please upload it as a standalone JPG/PNG/etc. to ensure the AI can analyze it.**</p>
                </div>
 
-               <!-- Extra AI Instructions (More Prominent Styling) -->
-               <div class="border border-purple-300 rounded-lg p-4 bg-purple-50 shadow-inner">
-                   <label for="extra-instructions" class="block text-lg font-semibold text-purple-800 mb-2">
-                       ✨ Extra AI Instructions (Optional, **Highly Emphasized**):
+               <!-- Extra AI Instructions -->
+               <div>
+                   <label for="extra-instructions" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Extra AI Instructions (Optional):
                    </label>
                    <textarea
                        id="extra-instructions"
-                       class="w-full p-3 border border-purple-400 rounded-lg shadow-sm focus:ring-purple-600 focus:border-purple-600 transition duration-200 h-28 resize-y bg-white"
-                       placeholder="E.g., 'Pay close attention to the originality of ideas and deduct points for any common clichés.' or 'Focus only on grammar and spelling, ignore content for this grade.' These instructions will be given high priority by the AI."
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-24 resize-y"
+                       placeholder="E.g., 'Pay close attention to the originality of ideas and deduct points for any common clichés.' or 'Focus only on grammar and spelling, ignore content for this grade.'"
                    ></textarea>
-                   <p class="text-sm text-purple-700 mt-2">
-                       Use this section for any specific, overriding directives for the AI's grading process.
-                       **The AI will be explicitly instructed to prioritize these comments.**
-                   </p>
+                   <p class="text-sm text-gray-500 mt-2">Provide any additional specific instructions for the AI on how to grade the essay.</p>
                </div>
 
                <!-- Grading Strictness Meter -->
@@ -273,11 +270,8 @@
    <script type="module">
        let googleApiKey = null; // Will store the fetched Google API key
 
-       // Define preferred models with a fallback order
-       const GEMINI_MODELS = [
-           "gemini-2.0-flash-lite", // Top priority: Fastest and most cost-efficient
-           "gemini-2.5-flash-preview-05-20" // Fallback: Newer, powerful multimodal model (might have different preview limits)
-       ];
+       // Define the primary Gemini model to use
+       const PRIMARY_GEMINI_MODEL = "gemini-2.0-flash-lite"; // Most cost-efficient and generally available
 
        // DOM Elements
        const dom = {
@@ -555,32 +549,18 @@
        async function processGrading(instructionsData, rubricData, essayData, extraInstructions, strictness) {
            const contents = [];
 
-           // Always add a "user" role for the primary prompt part
-           const initialUserParts = [];
-
-           // Make extra instructions highly prominent and prepend them
-           if (extraInstructions) {
-               initialUserParts.push({ text: `
-               !!! CRITICAL OVERRIDING INSTRUCTIONS FOR GRADING THIS ESSAY !!!
-               ATTENTION: The following instructions MUST be given highest priority and followed diligently.
-               ---
-               ${extraInstructions}
-               ---
-               END OF CRITICAL INSTRUCTIONS. Proceed with the primary grading task, but ensure these critical points are fully addressed.
-               `});
-           }
-
-           initialUserParts.push({ text: `
+           // System-like prompt incorporated into the first user part
+           contents.push({
+               role: "user",
+               parts: [{ text: `
                You are an AI essay grader. Your task is to evaluate an essay based on provided instructions and a specific rubric.
                Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
                A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
                A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
-
+               ${extraInstructions ? `\n\nAdditional Instructions from User:\n${extraInstructions}\n` : ''}
                Provide a detailed grade and feedback, addressing each point of the rubric.
-               `
+               `}]
            });
-
-           contents.push({ role: "user", parts: initialUserParts });
 
            // Helper to add combined text and image parts to Gemini's 'contents' array
            const addSectionToGeminiContents = (data, label) => {
@@ -642,72 +622,53 @@
            `}]
            });
 
-           let lastError = null;
+           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${PRIMARY_GEMINI_MODEL}:generateContent?key=${googleApiKey}`;
 
-           for (const modelId of GEMINI_MODELS) {
-               console.log(`Attempting to grade with model: ${modelId}`);
-               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${googleApiKey}`;
+           try {
+               // Implement the 5-second timeout
+               const controller = new AbortController();
+               const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-               try {
-                   // Implement the 5-second timeout
-                   const controller = new AbortController();
-                   const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+               const response = await Promise.race([
+                   fetch(apiUrl, {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({ contents: contents }),
+                       signal: controller.signal // Link the AbortController to the fetch request
+                   }),
+                   new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timed out after 5 seconds.')), AI_TIMEOUT_MS))
+               ]);
 
-                   const response = await Promise.race([
-                       fetch(apiUrl, {
-                           method: 'POST',
-                           headers: {
-                               'Content-Type': 'application/json'
-                           },
-                           body: JSON.stringify({ contents: contents }),
-                           signal: controller.signal // Link the AbortController to the fetch request
-                       }),
-                       new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timed out after 5 seconds.')), AI_TIMEOUT_MS))
-                   ]);
+               clearTimeout(timeoutId); // Clear the timeout if fetch resolves first
 
-                   clearTimeout(timeoutId); // Clear the timeout if fetch resolves first
+               if (!response.ok) {
+                   const errorData = await response.json();
+                   const errorMessage = errorData.error?.message || JSON.stringify(errorData) || 'Unknown error from Gemini';
+                   throw new Error(`Google Gemini API error with ${PRIMARY_GEMINI_MODEL}: ${response.status} - ${errorMessage}`);
+               }
 
-                   if (!response.ok) {
-                       const errorData = await response.json();
-                       const errorMessage = errorData.error?.message || JSON.stringify(errorData) || 'Unknown error from Gemini';
-                       lastError = new Error(`Google Gemini API error with ${modelId}: ${response.status} - ${errorMessage}`);
-                       console.error(lastError.message);
-                       if (response.status === 429 || errorMessage.includes("resource exhausted") || errorMessage.includes("model unavailable")) {
-                           continue; // Try the next model
-                       } else {
-                           throw lastError; // For other types of errors, stop and display
-                       }
-                   }
+               const result = await response.json();
 
-                   const result = await response.json();
-
-                   if (result.candidates && result.candidates.length > 0 &&
-                       result.candidates[0].content && result.candidates[0].content.parts &&
-                       result.candidates[0].content.parts.length > 0) {
-                       const text = result.candidates[0].content.parts[0].text;
-                       dom.resultContentDiv.innerHTML = marked.parse(text);
-                       dom.gradeResultDiv.classList.remove('hidden');
-                       displaySuccessMessage(`Essay graded successfully using ${modelId}!`);
-                       return; // Exit function if successful
-                   } else {
-                       lastError = new Error(`Could not get a valid response from Google Gemini AI using ${modelId}. Unexpected response structure.`);
-                       console.error(lastError.message);
-                       continue; // Try the next model if response structure is unexpected
-                   }
-               } catch (err) {
-                   lastError = new Error(`Failed to grade essay with ${modelId}: ${err.message}.`);
-                   console.error(lastError.message);
-                   if (err.name === 'AbortError') {
-                       lastError = new Error(`AI generation timed out after ${AI_TIMEOUT_MS / 1000} seconds with ${modelId}.`);
-                       console.error(lastError.message);
-                       continue; // Continue to the next model on timeout
-                   }
-                   continue; // Try the next model on other network/fetch errors
+               if (result.candidates && result.candidates.length > 0 &&
+                   result.candidates[0].content && result.candidates[0].content.parts &&
+                   result.candidates[0].content.parts.length > 0) {
+                   const text = result.candidates[0].content.parts[0].text;
+                   dom.resultContentDiv.innerHTML = marked.parse(text);
+                   dom.gradeResultDiv.classList.remove('hidden');
+                   displaySuccessMessage(`Essay graded successfully using ${PRIMARY_GEMINI_MODEL}!`);
+               } else {
+                   throw new Error(`Could not get a valid response from Google Gemini AI using ${PRIMARY_GEMINI_MODEL}. Unexpected response structure.`);
+               }
+           } catch (err) {
+               console.error(`Error grading essay with ${PRIMARY_GEMINI_MODEL}:`, err);
+               if (err.name === 'AbortError') {
+                   displayError(`AI generation timed out after ${AI_TIMEOUT_MS / 1000} seconds. Please try again with different parameters or a simpler query.`);
+               } else {
+                   displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
                }
            }
-
-           // If all models failed
-           displayError(`Failed to grade essay after trying all available models. Last error: ${lastError ? lastError.message : "Unknown error."}`);
        }
 
        // --- File Attachment Handling ---
