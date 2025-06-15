@@ -459,22 +459,27 @@
         * @param {string} strictness The strictness level (1-5).
         */
        async function processGrading(instructionsData, rubricData, essayData, extraInstructions, strictness) {
-           const systemPromptContent = `
+           const initialInstructionParts = [];
+
+           // Make extra instructions highly prominent
+           if (extraInstructions) {
+               initialInstructionParts.push({ text: `
+               CRITICAL ADDITIONAL INSTRUCTIONS FOR GRADING THIS ESSAY:
+               ${extraInstructions}
+               ---
+               `});
+           }
+
+           initialInstructionParts.push({ text: `
                You are an AI essay grader. Your task is to evaluate an essay based on provided instructions and a specific rubric.
                Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
                A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
                A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
 
                Provide a detailed grade and feedback, addressing each point of the rubric.
-           `;
+               `});
 
-           const baseContents = [];
-
-           // System-like prompt incorporated into the first user part
-           baseContents.push({
-               role: "user",
-               parts: [{ text: systemPromptContent }]
-           });
+           const contents = [{ role: "user", parts: initialInstructionParts }];
 
            // Helper to add content (text or image) to Gemini's 'parts' array
            const addContentToGeminiParts = (data, label) => {
@@ -483,9 +488,9 @@
                    if (data.sourceType === 'pdf') {
                        prefix += `(Note: This was provided as a PDF. While text has been extracted, any embedded images or graphs within the PDF are NOT directly visible to me and will not be graded as visual elements. I will grade based on the extracted text.)\n`;
                    }
-                   baseContents.push({ role: 'user', parts: [{ text: `${prefix}${data.content}\n` }] });
+                   contents.push({ role: 'user', parts: [{ text: `${prefix}${data.content}\n` }] });
                } else if (data.type === 'image' && data.imageData) {
-                   baseContents.push({
+                   contents.push({
                        role: 'user',
                        parts: [
                            { text: `\n${label} (from image): Please refer to the content in this image.` },
@@ -502,13 +507,10 @@
 
            addContentToGeminiParts(instructionsData, "Essay Instructions");
            addContentToGeminiParts(rubricData, "Grading Rubric");
-           if (extraInstructions) {
-               baseContents.push({ role: 'user', parts: [{ text: `\nExtra Grading Instructions for AI:\n${extraInstructions}\n` }] });
-           }
            addContentToGeminiParts(essayData, "Essay to be Graded"); // Essay is the main subject
 
            // Add the final formatting instruction as part of the user's last turn or a new one
-           baseContents.push({
+           contents.push({
                role: "user",
                parts: [{ text: `
                ---
@@ -552,7 +554,7 @@
                        headers: {
                            'Content-Type': 'application/json'
                        },
-                       body: JSON.stringify({ contents: baseContents })
+                       body: JSON.stringify({ contents: contents }) // Use the built 'contents' array
                    });
 
                    if (!response.ok) {
