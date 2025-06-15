@@ -628,21 +628,22 @@
            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${PRIMARY_GEMINI_MODEL}:generateContent?key=${googleApiKey}`;
 
            try {
-               // Implement the 5-second timeout
+               // Implement the 5-second timeout using a signal for the fetch request.
                const controller = new AbortController();
-               const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+               const timeoutId = setTimeout(() => {
+                   controller.abort(); // Abort the fetch request after timeout
+                   // If the fetch is still pending, this will cause it to reject with an AbortError.
+                   // The catch block will then handle it.
+               }, AI_TIMEOUT_MS);
 
-               const response = await Promise.race([
-                   fetch(apiUrl, {
-                       method: 'POST',
-                       headers: {
-                           'Content-Type': 'application/json'
-                       },
-                       body: JSON.stringify({ contents: contents }),
-                       signal: controller.signal // Link the AbortController to the fetch request
-                   }),
-                   new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timed out after 5 seconds.')), AI_TIMEOUT_MS))
-               ]);
+               const response = await fetch(apiUrl, {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({ contents: contents }),
+                   signal: controller.signal // Link the AbortController to the fetch request
+               });
 
                clearTimeout(timeoutId); // Clear the timeout if fetch resolves first
 
@@ -688,7 +689,8 @@
                fileListElement.classList.remove('expanded'); // Ensure collapsed if no files
                // Locate the specific toggle button for this input section
                const fileInput = dom[fileInputId];
-               const parentDiv = fileInput.closest('.flex.items-center');
+               // Find the containing div of the file input and the toggle button
+               const parentDiv = fileInput.parentNode;
                const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null;
                if (toggleButton) toggleButton.textContent = 'Show Files';
                return;
