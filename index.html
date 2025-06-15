@@ -201,7 +201,7 @@
        </main>
 
        <footer class="bg-purple-700 text-white p-4 text-center rounded-b-3xl text-sm">
-           Powered by Groq API
+           Powered by Gemini AI
        </footer>
    </div>
 
@@ -217,21 +217,11 @@
        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-       // Firebase configuration (REPLACE WITH YOUR OWN FIREBASE CONFIG FOR DEPLOYMENT)
-       // When running in the Canvas environment, __firebase_config is provided.
-       // For GitHub Pages/Vercel deployment, you MUST replace the content of 'myFirebaseConfig'
-       // with your actual Firebase project's config object.
-       const myFirebaseConfig = {
-            apiKey: "AIzaSyCB56L6XZrCqfQlTWoV6_qegxHf_NYXrjQ",
-            authDomain: "litgrader.firebaseapp.com",
-            projectId: "litgrader",
-            storageBucket: "litgrader.firebasestorage.app",
-            messagingSenderId: "646653876601",
-            appId: "1:646653876601:web:69d1d8280acf11a1c0f7a8",
-            measurementId: "G-Y7M7M022DY" // Optional: Include if present in your Firebase config
-       };
+       // Firebase configuration (will be fetched securely from Vercel serverless function)
+       let firebaseConfig = {}; // Initialize as empty, will be populated by fetchAppConfigs
 
-       const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myFirebaseConfig;
+       // The __app_id global variable is provided by the Canvas environment.
+       // For external deployments (Vercel/GitHub Pages), you can set a default or use an environment variable if needed.
        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 
@@ -265,30 +255,34 @@
        });
 
        /**
-        * Fetches the API key from the Vercel serverless function.
+        * Fetches application configurations (Gemini API key and Firebase config)
+        * from the Vercel serverless function.
         */
-       async function fetchApiKey() {
+       async function fetchAppConfigs() {
            try {
-               // Assuming the Vercel function is deployed at /api/get-api-key
-               const response = await fetch('/api/get-api-key');
+               // Assuming the Vercel function is deployed at /api/get-configs
+               const response = await fetch('/api/get-configs');
                if (!response.ok) {
                    const errorDetails = await response.json();
-                   throw new Error(`Failed to fetch API key: ${response.status} - ${errorDetails.error || 'Unknown error'}`);
+                   throw new Error(`Failed to fetch application configs: ${response.status} - ${errorDetails.error || 'Unknown error'}`);
                }
                const data = await response.json();
-               if (data.apiKey) {
-                   geminiApiKey = data.apiKey;
-                   console.log("API Key fetched successfully.");
+               if (data.geminiApiKey && data.firebaseConfig) {
+                   geminiApiKey = data.geminiApiKey;
+                   // Assign the fetched Firebase config directly
+                   // Ensure the firebaseConfig object is updated with the fetched values
+                   Object.assign(firebaseConfig, data.firebaseConfig);
+                   console.log("App configs fetched successfully (Gemini key and Firebase config).");
                } else {
-                   throw new Error("API key not found in response.");
+                   throw new Error("Essential app configs not found in response.");
                }
            } catch (error) {
-               console.error("Error fetching API key:", error);
-               displayError(`Application error: Could not load essential API key. ${error.message}`);
-               // Disable grading button if API key isn't available
+               console.error("Error fetching application configs:", error);
+               displayError(`Application error: Could not load essential configurations. ${error.message}`);
+               // Disable grading button if configs aren't available
                dom.gradeButton.disabled = true;
                dom.gradeButton.classList.add('bg-purple-400', 'cursor-not-allowed');
-               dom.gradeButton.textContent = 'Error Loading App';
+               dom.gradeButton.textContent = 'Error Loading App Configs';
            }
        }
 
@@ -298,11 +292,12 @@
         */
        async function initializeFirebase() {
            try {
-               // Log which Firebase config is being used for debugging
-               if (typeof __firebase_config !== 'undefined') {
-                   console.log("Initializing Firebase with Canvas-provided config.");
-               } else {
-                   console.log("Initializing Firebase with user-defined config (for deployment).");
+               // Ensure firebaseConfig has been populated by fetchAppConfigs
+               if (!firebaseConfig.projectId) {
+                   console.error("Firebase config is not available. Cannot initialize Firebase.");
+                   // This error should ideally be caught by fetchAppConfigs failure, but added as a safeguard
+                   displayError("Firebase initialization failed: Configuration missing.");
+                   return;
                }
 
                app = initializeApp(firebaseConfig);
@@ -318,6 +313,8 @@
                    } else {
                        try {
                            // __initial_auth_token is only available in Canvas. For external deploy, use anonymous.
+                           // If __initial_auth_token is provided (e.g., in Canvas), attempt custom token sign-in.
+                           // Otherwise (e.g., on Vercel), sign in anonymously.
                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                                await signInWithCustomToken(auth, __initial_auth_token);
                            } else {
@@ -328,7 +325,7 @@
                            dom.userIdDisplay.classList.remove('hidden');
                            console.log("Signed in.");
                        } catch (authError) {
-                           console.error("Authentication error:", authError);
+                           console.error("Authentication error during sign-in:", authError);
                            dom.userIdDisplay.textContent = `User ID: Anonymous (Error)`;
                            dom.userIdDisplay.classList.remove('hidden');
                            displayError("Failed to sign in. Please refresh.");
@@ -336,7 +333,7 @@
                    }
                });
            } catch (e) {
-               console.error("Failed to initialize Firebase:", e);
+               console.error("Failed to initialize Firebase app instance:", e);
                displayError("Failed to initialize the application. Please try again later.");
            }
        }
@@ -364,21 +361,27 @@
         */
        function toggleLoading(isLoading) {
            dom.loadingIndicator.classList.toggle('hidden', !isLoading);
-           dom.gradeButton.disabled = isLoading || !geminiApiKey; // Also disable if API key isn't loaded
-           dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !geminiApiKey);
-           dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !geminiApiKey);
-           dom.gradeButton.classList.toggle('bg-purple-600', !(isLoading || !geminiApiKey));
-           dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !geminiApiKey));
-           dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !geminiApiKey));
-           dom.gradeButton.innerHTML = isLoading
-               ? `<span class="flex items-center justify-center">
-                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                     </svg>
-                     Grading...
-                 </span>`
-               : (geminiApiKey ? 'Grade Essay' : 'Loading API Key...'); // Update button text based on key availability
+           // Button disabled if loading or if essential keys/configs are not yet loaded
+           dom.gradeButton.disabled = isLoading || !geminiApiKey || !firebaseConfig.projectId;
+           dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !geminiApiKey || !firebaseConfig.projectId);
+           dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !geminiApiKey || !firebaseConfig.projectId);
+           dom.gradeButton.classList.toggle('bg-purple-600', !(isLoading || !geminiApiKey || !firebaseConfig.projectId));
+           dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !geminiApiKey || !firebaseConfig.projectId));
+           dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !geminiApiKey || !firebaseConfig.projectId));
+
+           let buttonText = 'Grade Essay';
+           if (!geminiApiKey || !firebaseConfig.projectId) {
+               buttonText = 'Loading App Configs...';
+           } else if (isLoading) {
+               buttonText = `<span class="flex items-center justify-center">
+                                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                 </svg>
+                                 Grading...
+                             </span>`;
+           }
+           dom.gradeButton.innerHTML = buttonText;
        }
 
        /**
@@ -403,8 +406,7 @@
                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
                            let fullText = '';
                            for (let i = 1; i <= pdf.numPages; i++) {
-                               const page = await pdf.getPage(i);
-                               const textContent = await page.getTextContent();
+                               const page = await page.getTextContent();
                                fullText += textContent.items.map(item => item.str).join(' ') + '\n';
                            }
                            resolve({ type: 'text', content: fullText, sourceType: 'pdf' });
@@ -460,8 +462,9 @@
         */
        async function gradeEssay() {
            hideError();
-           if (!geminiApiKey) {
-               displayError("API key not loaded. Please wait or refresh the page.");
+           // Also check if firebaseConfig.projectId is available, ensuring Firebase is ready
+           if (!geminiApiKey || !firebaseConfig.projectId) {
+               displayError("Application not fully loaded. Please wait or refresh the page.");
                return;
            }
            toggleLoading(true);
@@ -613,8 +616,8 @@
        // Main initialization function
        async function initApp() {
            dom.gradeButton.addEventListener('click', gradeEssay);
-           await fetchApiKey(); // Fetch API key on app initialization
-           initializeFirebase();
+           await fetchAppConfigs(); // Fetch ALL app configs (Gemini key + Firebase config) on app initialization
+           initializeFirebase(); // Firebase will now initialize with the fetched config
            toggleLoading(false); // Ensure button is enabled after key fetch
        }
 
