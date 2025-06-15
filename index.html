@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>AI Essay Grader</title>
+   <!-- Tailwind CSS CDN -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Inter Font -->
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+   <style>
+       body {
+           font-family: 'Inter', sans-serif;
+       }
+       /* Custom styles for better prose in results */
+       .prose br {
+           display: block;
+           margin-bottom: 0.5em; /* Add some spacing between lines */
+       }
+       /* Fix for text overflow within prose content */
+       .prose {
+           word-break: break-word;
+           overflow-wrap: break-word;
+       }
+       input[type="range"] {
+           -webkit-appearance: none;
+           width: 100%;
+           height: 10px;
+           background: #ddd;
+           border-radius: 5px;
+           outline: none;
+           opacity: 0.7;
+           transition: opacity .2s;
+       }
+       input[type="range"]:hover {
+           opacity: 1;
+       }
+       input[type="range"]::-webkit-slider-thumb {
+           -webkit-appearance: none;
+           appearance: none;
+           width: 25px;
+           height: 25px;
+           border-radius: 50%;
+           background: #8b5cf6; /* purple-500 */
+           cursor: pointer;
+           box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+       }
+       input[type="range"]::-moz-range-thumb {
+           width: 25px;
+           height: 25px;
+           border-radius: 50%;
+           background: #8b5cf6; /* purple-500 */
+           cursor: pointer;
+           box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+       }
+   </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200 p-4 sm:p-6 lg:p-8 antialiased">
+   <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden">
+       <header class="bg-purple-700 text-white p-6 rounded-t-3xl shadow-md">
+           <h1 class="text-3xl font-bold text-center">AI Essay Grader</h1>
+           <p class="text-center mt-2 text-purple-200">
+               Automate essay evaluation based on your specific criteria. <br><br>
+               Might struggle with visual elements.
+           </p>
+           <p id="user-id-display" class="text-center mt-2 text-purple-200 text-sm hidden"></p>
+       </header>
+
+       <main class="p-6 space-y-8">
+           <div class="space-y-4">
+               <div>
+                   <label for="instructions" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Essay Instructions (or upload a file):
+                   </label>
+                   <textarea
+                       id="instructions"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-32 resize-y mb-4"
+                       placeholder="E.g., 'Write a persuasive essay arguing for or against the use of renewable energy sources. The essay should be 500-700 words and include at least three supporting arguments.'"
+                   ></textarea>
+                   <input
+                       type="file"
+                       id="instructions-file"
+                       accept=".txt,.md,.pdf,image/jpeg,image/png,image/gif,image/webp"
+                       class="block w-full text-sm text-gray-700
+                             file:mr-4 file:py-2 file:px-4
+                             file:rounded-full file:border-0
+                             file:text-sm file:font-semibold
+                             file:bg-purple-50 file:text-purple-700
+                             hover:file:bg-purple-100"
+                   />
+                   <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. If a file is uploaded, its content will be used instead of the text area. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your instructions are an image, please upload it as a standalone JPG/PNG/etc.**</p>
+               </div>
+
+               <div>
+                   <label for="rubric" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Grading Rubric (or upload a file):
+                   </label>
+                   <textarea
+                       id="rubric"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-48 resize-y mb-4"
+                       placeholder="E.g., 'Content (40%): Thesis clarity, development of arguments, evidence. Organization (30%): Introduction, body paragraphs, conclusion, transitions. Language (20%): Grammar, spelling, vocabulary, sentence structure. Originality (10%): Unique insights, critical thinking.'"
+                   ></textarea>
+                   <input
+                       type="file"
+                       id="rubric-file"
+                       accept=".txt,.md,.pdf,image/jpeg,image/png,image/gif,image/webp"
+                       class="block w-full text-sm text-gray-700
+                             file:mr-4 file:py-2 file:px-4
+                             file:rounded-full file:border-0
+                             file:text-sm file:font-semibold
+                             file:bg-purple-50 file:text-purple-700
+                             hover:file:bg-purple-100"
+                   />
+                   <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. If a file is uploaded, its content will be used instead of the text area. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your rubric is an image, please upload it as a standalone JPG/PNG/etc.**</p>
+               </div>
+
+               <div>
+                   <label for="essay" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Essay Text (or upload a file):
+                   </label>
+                   <textarea
+                       id="essay"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-64 resize-y mb-4"
+                       placeholder="Paste the essay text here..."
+                   ></textarea>
+                   <input
+                       type="file"
+                       id="essay-file"
+                       accept=".txt,.md,.doc,.docx,.pdf,image/jpeg,image/png,image/gif,image/webp"
+                       class="block w-full text-sm text-gray-700
+                             file:mr-4 file:py-2 file:px-4
+                             file:rounded-full file:border-0
+                             file:text-sm file:font-semibold
+                             file:bg-purple-50 file:text-purple-700
+                             hover:file:bg-purple-100"
+                   />
+                   <p class="text-sm text-gray-500 mt-2">Accepted formats: .txt, .md, .pdf, .jpg, .png, .gif, .webp. For essay files, .doc and .docx are also accepted, but conversion may vary. **Note: For PDFs, only text content is extracted; images embedded in PDFs are NOT processed. If your essay includes crucial visual elements (like graphs) or is a scanned image, please upload it as a standalone JPG/PNG/etc. to ensure the AI can analyze it.**</p>
+               </div>
+
+               <!-- New: Extra AI Instructions -->
+               <div>
+                   <label for="extra-instructions" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Extra AI Instructions (Optional):
+                   </label>
+                   <textarea
+                       id="extra-instructions"
+                       class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-24 resize-y"
+                       placeholder="E.g., 'Pay close attention to the originality of ideas and deduct points for any common clichés.' or 'Focus only on grammar and spelling, ignore content for this grade.'"
+                   ></textarea>
+                   <p class="text-sm text-gray-500 mt-2">Provide any additional specific instructions for the AI on how to grade the essay.</p>
+               </div>
+
+               <!-- Grading Strictness Meter -->
+               <div class="mt-6">
+                   <label for="strictness-meter" class="block text-lg font-semibold text-gray-800 mb-2">
+                       Grading Strictness: <span id="strictness-value" class="text-purple-700 font-bold">3</span>
+                   </label>
+                   <input
+                       type="range"
+                       id="strictness-meter"
+                       min="1"
+                       max="5"
+                       value="3"
+                       step="1"
+                       class="w-full"
+                   />
+                   <div class="flex justify-between text-sm text-gray-600 mt-2">
+                       <span>Lenient (1)</span>
+                       <span>Normal (3)</span>
+                       <span>Strict (5)</span>
+                   </div>
+                   <p class="text-sm text-gray-500 mt-2">
+                       A higher strictness will make the AI more critical of mistakes and deduct points more rigorously.
+                   </p>
+               </div>
+
+               <button
+                   id="grade-button"
+                   class="w-full py-3 px-6 rounded-lg text-white font-bold text-lg shadow-lg transform transition duration-300 bg-purple-600 hover:bg-purple-700 active:scale-95"
+               >
+                   Grade Essay
+               </button>
+
+               <div id="loading-indicator" class="hidden flex items-center justify-center py-3">
+                   <svg class="animate-spin -ml-1 mr-3 h-7 w-7 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                   </svg>
+                   <span class="text-lg text-purple-700">Grading...</span>
+               </div>
+
+               <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                   <strong class="font-bold">Error!</strong>
+                   <span id="error-text" class="block sm:inline"></span>
+               </div>
+
+               <div id="grade-result" class="hidden bg-purple-50 p-6 rounded-lg shadow-inner mt-6">
+                   <h2 class="text-2xl font-bold text-purple-800 mb-4">Grading Results:</h2>
+                   <div id="result-content" class="prose max-w-none text-gray-700 leading-relaxed"></div>
+               </div>
+           </div>
+       </main>
+
+       <footer class="bg-purple-700 text-white p-4 text-center rounded-b-3xl text-sm">
+           Powered by Gemini AI
+       </footer>
+   </div>
+
+   <!-- PDF.js CDN -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+   <script>
+       // Set the workerSrc for PDF.js
+       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+   </script>
+
+   <script type="module">
+       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+       import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+       import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+       // Global variables from Canvas environment
+       const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+       const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+       // Firebase instances
+       let app, db, auth, currentUserId = null;
+       let geminiApiKey = null; // Will store the fetched API key
+
+       // DOM Elements
+       const dom = {
+           instructionsTextarea: document.getElementById('instructions'),
+           instructionsFileInput: document.getElementById('instructions-file'),
+           rubricTextarea: document.getElementById('rubric'),
+           rubricFileInput: document.getElementById('rubric-file'),
+           essayTextarea: document.getElementById('essay'),
+           essayFileInput: document.getElementById('essay-file'),
+           extraInstructionsTextarea: document.getElementById('extra-instructions'),
+           gradeButton: document.getElementById('grade-button'),
+           loadingIndicator: document.getElementById('loading-indicator'),
+           errorMessageDiv: document.getElementById('error-message'),
+           errorTextSpan: document.getElementById('error-text'),
+           gradeResultDiv: document.getElementById('grade-result'),
+           resultContentDiv: document.getElementById('result-content'),
+           userIdDisplay: document.getElementById('user-id-display'),
+           strictnessMeter: document.getElementById('strictness-meter'),
+           strictnessValueDisplay: document.getElementById('strictness-value'),
+       };
+
+       // Update strictness value display as the slider moves
+       dom.strictnessMeter.addEventListener('input', () => {
+           dom.strictnessValueDisplay.textContent = dom.strictnessMeter.value;
+       });
+
+       /**
+        * Fetches the API key from the Vercel serverless function.
+        */
+       async function fetchApiKey() {
+           try {
+               // Assuming the Vercel function is deployed at /api/get-api-key
+               const response = await fetch('/api/get-api-key');
+               if (!response.ok) {
+                   const errorDetails = await response.json();
+                   throw new Error(`Failed to fetch API key: ${response.status} - ${errorDetails.error || 'Unknown error'}`);
+               }
+               const data = await response.json();
+               if (data.apiKey) {
+                   geminiApiKey = data.apiKey;
+                   console.log("API Key fetched successfully.");
+               } else {
+                   throw new Error("API key not found in response.");
+               }
+           } catch (error) {
+               console.error("Error fetching API key:", error);
+               displayError(`Application error: Could not load essential API key. ${error.message}`);
+               // Disable grading button if API key isn't available
+               dom.gradeButton.disabled = true;
+               dom.gradeButton.classList.add('bg-purple-400', 'cursor-not-allowed');
+               dom.gradeButton.textContent = 'Error Loading App';
+           }
+       }
+
+
+       /**
+        * Initializes Firebase and handles user authentication.
+        */
+       async function initializeFirebase() {
+           try {
+               app = initializeApp(firebaseConfig);
+               db = getFirestore(app);
+               auth = getAuth(app);
+
+               onAuthStateChanged(auth, async (user) => {
+                   if (user) {
+                       currentUserId = user.uid;
+                       dom.userIdDisplay.textContent = `User ID: ${currentUserId}`;
+                       dom.userIdDisplay.classList.remove('hidden');
+                       console.log("Firebase authenticated with user ID:", currentUserId);
+                   } else {
+                       try {
+                           if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                               await signInWithCustomToken(auth, __initial_auth_token);
+                           } else {
+                               await signInAnonymously(auth);
+                           }
+                           currentUserId = auth.currentUser.uid;
+                           dom.userIdDisplay.textContent = `User ID: ${currentUserId}`;
+                           dom.userIdDisplay.classList.remove('hidden');
+                           console.log("Signed in.");
+                       } catch (authError) {
+                           console.error("Authentication error:", authError);
+                           dom.userIdDisplay.textContent = `User ID: Anonymous (Error)`;
+                           dom.userIdDisplay.classList.remove('hidden');
+                           displayError("Failed to sign in. Please refresh.");
+                       }
+                   }
+               });
+           } catch (e) {
+               console.error("Failed to initialize Firebase:", e);
+               displayError("Failed to initialize the application. Please try again later.");
+           }
+       }
+
+       /**
+        * Displays an error message to the user.
+        * @param {string} message The error message to display.
+        */
+       function displayError(message) {
+           dom.errorMessageDiv.classList.remove('hidden');
+           dom.errorTextSpan.textContent = message;
+       }
+
+       /**
+        * Hides the error message.
+        */
+       function hideError() {
+           dom.errorMessageDiv.classList.add('hidden');
+           dom.errorTextSpan.textContent = '';
+       }
+
+       /**
+        * Toggles the loading indicator and button state.
+        * @param {boolean} isLoading True to show loading, false to hide.
+        */
+       function toggleLoading(isLoading) {
+           dom.loadingIndicator.classList.toggle('hidden', !isLoading);
+           dom.gradeButton.disabled = isLoading || !geminiApiKey; // Also disable if API key isn't loaded
+           dom.gradeButton.classList.toggle('bg-purple-400', isLoading || !geminiApiKey);
+           dom.gradeButton.classList.toggle('cursor-not-allowed', isLoading || !geminiApiKey);
+           dom.gradeButton.classList.toggle('bg-purple-600', !(isLoading || !geminiApiKey));
+           dom.gradeButton.classList.toggle('hover:bg-purple-700', !(isLoading || !geminiApiKey));
+           dom.gradeButton.classList.toggle('active:scale-95', !(isLoading || !geminiApiKey));
+           dom.gradeButton.innerHTML = isLoading
+               ? `<span class="flex items-center justify-center">
+                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                     </svg>
+                     Grading...
+                 </span>`
+               : (geminiApiKey ? 'Grade Essay' : 'Loading API Key...'); // Update button text based on key availability
+       }
+
+       /**
+        * Reads content from a file (text, PDF text, or base64 image).
+        * @param {File} file The file to read.
+        * @returns {Promise<{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' }>}
+        */
+       async function getFileContent(file) {
+           if (!file) return { type: 'text', content: '', sourceType: 'none' };
+
+           return new Promise((resolve, reject) => {
+               const reader = new FileReader();
+               reader.onerror = (e) => reject(new Error(`Failed to read file: ${file.name}. Error: ${e.target.error}`));
+
+               if (file.type.startsWith('image/')) {
+                   reader.onload = (e) => resolve({ type: 'image', content: null, imageData: { mimeType: file.type, data: e.target.result.split(',')[1] }, sourceType: 'imagefile' });
+                   reader.readAsDataURL(file);
+               } else if (file.type === 'application/pdf') {
+                   reader.onload = async (e) => {
+                       try {
+                           const typedarray = new Uint8Array(e.target.result);
+                           const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                           let fullText = '';
+                           for (let i = 1; i <= pdf.numPages; i++) {
+                               const page = await pdf.getPage(i);
+                               const textContent = await page.getTextContent();
+                               fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                           }
+                           resolve({ type: 'text', content: fullText, sourceType: 'pdf' });
+                       } catch (error) {
+                           reject(new Error(`Failed to process PDF: ${error.message}`));
+                       }
+                   };
+                   reader.readAsArrayBuffer(file);
+               } else if (file.type === 'text/plain' || file.type === 'text/markdown') {
+                   reader.onload = (e) => resolve({ type: 'text', content: e.target.result, sourceType: 'textfile' });
+                   reader.readAsText(file);
+               } else if (file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                   displayError("Word documents (.doc, .docx) cannot be directly processed by the browser for AI grading. Please convert your file to .txt, .md, .pdf, or an image format (jpg/png) and re-upload.");
+                   reject(new Error("Unsupported file type for direct content reading."));
+               } else {
+                   displayError(`Unsupported file type: ${file.type}. Please use .txt, .md, .pdf, or common image formats.`);
+                   reject(new Error("Unsupported file type."));
+               }
+           });
+       }
+
+       /**
+        * Helper to add content (text or image) to prompt parts for chatHistory.
+        * @param {Array<Object>} partsArray The array to add parts to.
+        * @param {{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' | 'textarea' }} data The content data object.
+        * @param {string} label The label for this content (e.g., "Essay Instructions").
+        * @param {boolean} isMainEssay True if this is the primary essay content.
+        */
+       const addInputToChatHistory = (partsArray, data, label, isMainEssay = false) => {
+           if (data.type === 'text' && data.content) {
+               let prefix = `\n${label}:\n`;
+               if (data.sourceType === 'pdf') {
+                   prefix += `(Note: This was provided as a PDF. While text has been extracted, any embedded images or graphs within the PDF are NOT directly visible to me and will not be graded as visual elements. I will grade based on the extracted text.)\n`;
+               }
+               partsArray.push({ text: `${prefix}${data.content}\n` });
+           } else if (data.type === 'image' && data.imageData) {
+               partsArray.push({ text: `\n${label} (from image): Please refer to the content in the following image.` });
+               if (isMainEssay) {
+                   partsArray.push({ text: "I will read the text in this image and grade it based on the provided instructions and rubric." });
+               }
+               partsArray.push({
+                   inlineData: {
+                       mimeType: data.imageData.mimeType,
+                       data: data.imageData.data
+                   }
+               });
+               partsArray.push({ text: "\n" });
+           }
+       };
+
+       /**
+        * Handles the essay grading process.
+        */
+       async function gradeEssay() {
+           hideError();
+           if (!geminiApiKey) {
+               displayError("API key not loaded. Please wait or refresh the page.");
+               return;
+           }
+           toggleLoading(true);
+           dom.gradeResultDiv.classList.add('hidden');
+
+           const extraInstructions = dom.extraInstructionsTextarea.value.trim();
+           const strictness = dom.strictnessMeter.value;
+
+           // Process content from textareas or files
+           const getProcessedContent = async (textareaElement, fileInputElement) => {
+               if (fileInputElement.files.length > 0) {
+                   return await getFileContent(fileInputElement.files[0]);
+               }
+               return { type: 'text', content: textareaElement.value.trim(), sourceType: 'textarea' };
+           };
+
+           let instructionsContent, rubricContent, essayContent;
+
+           try {
+               instructionsContent = await getProcessedContent(dom.instructionsTextarea, dom.instructionsFileInput);
+               rubricContent = await getProcessedContent(dom.rubricTextarea, dom.rubricFileInput);
+               essayContent = await getProcessedContent(dom.essayTextarea, dom.essayFileInput);
+           } catch (fileError) {
+               toggleLoading(false);
+               return;
+           }
+
+           // Validate content presence for required fields
+           const validateContent = (data, fieldName) => {
+               if (!data.content && (!data.imageData || !data.imageData.data)) {
+                   displayError(`Please provide ${fieldName} (text or file).`);
+                   toggleLoading(false);
+                   return false;
+               }
+               return true;
+           };
+
+           if (!validateContent(instructionsContent, "Essay Instructions") ||
+               !validateContent(rubricContent, "Grading Rubric") ||
+               !validateContent(essayContent, "Essay Text")) {
+               return;
+           }
+
+           await processGrading(instructionsContent, rubricContent, essayContent, extraInstructions, strictness);
+       }
+
+       /**
+        * Sends the grading request to the AI and processes the response.
+        * @param {{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' | 'textarea' }} instructionsData Instructions content (text or image data).
+        * @param {{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' | 'textarea' }} rubricData Rubric content (text or image data).
+        * @param {{ type: 'text' | 'image', content: string | null, imageData?: { mimeType: string, data: string }, sourceType?: 'pdf' | 'textfile' | 'imagefile' | 'textarea' }} essayData Essay content (text or image data).
+        * @param {string} extraInstructions Additional instructions for the AI.
+        * @param {string} strictness The strictness level (1-5).
+        */
+       async function processGrading(instructionsData, rubricData, essayData, extraInstructions, strictness) {
+           const promptBaseText = `
+               You are an AI essay grader. Your task is to evaluate an essay based on provided instructions and a specific rubric.
+               Consider the grading strictness level: ${strictness} (on a scale of 1 to 5, where 1 is very lenient and 5 is very strict).
+               A higher strictness level means you should be more critical of mistakes, highlight even minor errors, and deduct points more rigorously.
+               A lower strictness level means you should be more forgiving of minor imperfections and focus more on overall ideas and effort.
+
+               Provide a detailed grade and feedback, addressing each point of the rubric.
+           `;
+
+           let chatHistoryParts = [{ text: promptBaseText }];
+
+           addInputToChatHistory(chatHistoryParts, instructionsData, "Essay Instructions");
+           addInputToChatHistory(chatHistoryParts, rubricData, "Grading Rubric");
+
+           if (extraInstructions) {
+               chatHistoryParts.push({ text: `\nExtra Grading Instructions for AI:\n${extraInstructions}\n` });
+           }
+
+           addInputToChatHistory(chatHistoryParts, essayData, "Essay to be Graded", true);
+
+           chatHistoryParts.push({ text: `
+               ---
+               Please provide your feedback and grade in the following structured Markdown format. Use extra line breaks where appropriate to improve readability between sections and paragraphs.
+
+               # Overall Grade: [Your calculated grade based on the rubric, e.g., A, B+, 85/100, etc.]
+
+               ---
+
+               ## Detailed Feedback:
+
+               * **Criterion 1 (from Rubric):**
+                 [Evaluation for this criterion, strengths, weaknesses, and suggestions for improvement. Use bullet points for strengths, weaknesses, and suggestions if applicable. Ensure there is vertical spacing between points.]
+
+               * **Criterion 2 (from Rubric):**
+                 [Evaluation for this criterion, strengths, weaknesses, and suggestions for improvement. Ensure there is vertical spacing between points.]
+
+               * ... (Continue for all relevant rubric criteria, ensuring clear headings, ample vertical spacing, and bullet points for each criterion's evaluation, strengths, weaknesses, and suggestions.)
+
+               ---
+
+               ## General Comments:
+               [Any additional overall feedback, summary of major strengths, or overarching areas for growth. Ensure good paragraph spacing.]
+
+               ---
+
+               ## What to Work On to Improve:
+               [Provide clear, actionable steps for improvement. Use numbered lists or bulleted lists for clarity. Each point should be a specific suggestion based on the weaknesses identified in the detailed feedback. Ensure good vertical spacing between points.]
+           `});
+
+           const payload = { contents: [{ role: "user", parts: chatHistoryParts }] };
+           // Use the fetched API key here
+           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+           try {
+               const response = await fetch(apiUrl, {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify(payload)
+               });
+
+               if (!response.ok) {
+                   const errorData = await response.json();
+                   throw new Error(`API error: ${response.status} - ${errorData.error.message || 'Unknown error'}`);
+               }
+
+               const result = await response.json();
+
+               if (result.candidates && result.candidates.length > 0 &&
+                   result.candidates[0].content && result.candidates[0].content.parts &&
+                   result.candidates[0].content.parts.length > 0) {
+                   const text = result.candidates[0].content.parts[0].text;
+                   dom.resultContentDiv.innerHTML = marked.parse(text);
+                   dom.gradeResultDiv.classList.remove('hidden');
+
+                   saveGradingRequest({
+                       instructions: instructionsData.type === 'text' ? instructionsData.content : `[Content from ${instructionsData.sourceType} file]`,
+                       rubric: rubricData.type === 'text' ? rubricData.content : `[Content from ${rubricData.sourceType} file]`,
+                       essayText: essayData.type === 'text' ? essayData.content : null,
+                       essayImageMimeType: essayData.type === 'image' ? essayData.imageData.mimeType : null,
+                       extraInstructions,
+                       strictness
+                   }, text);
+               } else {
+                   displayError("Could not get a valid response from the AI. Please try again.");
+               }
+           } catch (err) {
+               console.error("Error grading essay:", err);
+               displayError(`Failed to grade essay: ${err.message}. Please check your inputs and try again.`);
+           } finally {
+               toggleLoading(false);
+           }
+       }
+
+       // Main initialization function
+       async function initApp() {
+           dom.gradeButton.addEventListener('click', gradeEssay);
+           await fetchApiKey(); // Fetch API key on app initialization
+           initializeFirebase();
+           toggleLoading(false); // Ensure button is enabled after key fetch
+       }
+
+       // Initialize the app on window load
+       window.onload = initApp;
+   </script>
+   <!-- Marked.js CDN for Markdown rendering -->
+   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>
