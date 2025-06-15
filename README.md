@@ -1,7 +1,7 @@
-📚 AI Essay Grader
-Effortlessly grade essays with custom instructions, rubrics, and strictness levels, powered by advanced AI. This web application streamlines the evaluation process, providing detailed feedback and actionable improvement suggestions for students and educators alike.
+# 📚 AI Essay Grader
+# Effortlessly grade essays with custom instructions, rubrics, and strictness levels, powered by advanced AI. This web application streamlines the evaluation process, providing detailed feedback and actionable improvement suggestions for students   and educators alike.
 
-✨ Features
+# ✨ Features
 Intelligent Grading: Get a comprehensive grade and detailed feedback based on your specific criteria.
 
 Customizable Rubrics: Define your own grading rubric to ensure the AI evaluates essays exactly how you intend.
@@ -26,7 +26,7 @@ Structured Feedback: Receive AI feedback formatted clearly with overall grade, d
 
 User Authentication & Persistence: Uses Firebase to securely store grading results tied to your user ID, allowing you to revisit past evaluations.
 
-🚀 How to Use
+# 🚀 How to Use
 Clone the Repository:
 
 git clone <repository_url>
@@ -50,7 +50,7 @@ Add any "Extra AI Instructions" for more nuanced grading.
 
 Grade Essay: Click the "Grade Essay" button and wait for the AI's detailed feedback!
 
-🛠️ Technologies Used
+# 🛠️ Technologies Used
 HTML5 & CSS3: For the core structure and styling.
 
 Tailwind CSS: A utility-first CSS framework for rapid and responsive UI development.
@@ -63,7 +63,7 @@ Marked.js: A markdown parser for rendering the AI's structured feedback beautifu
 
 Firebase (Authentication & Firestore): For secure user authentication and persistent storage of grading results.
 
-Gemini API: The powerful multimodal AI model used for essay grading and feedback generation.
+Groq API: The powerful multimodal AI model used for essay grading and feedback generation.
 
 🤝 Contributing
 Contributions are welcome! If you have suggestions for improvements or new features, feel free to open an issue or submit a pull request.
