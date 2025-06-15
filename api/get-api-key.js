@@ -17,6 +17,16 @@ export default function handler(request, response) {
         measurementId: process.env.FIREBASE_MEASUREMENT_ID // Optional: include if you use Analytics
     };
 
+    // --- DEBUGGING LOGS (for Vercel runtime logs) ---
+    console.log('--- Serverless Function Config Check ---');
+    console.log('GROQ_API (groqApiKey):', groqApiKey ? `[Present] ${groqApiKey.substring(0, 5)}...` : '[NOT SET]');
+    console.log('FIREBASE_API_KEY (firebaseConfig.apiKey):', firebaseConfig.apiKey ? `[Present] ${firebaseConfig.apiKey.substring(0, 5)}...` : '[NOT SET]');
+    console.log('FIREBASE_PROJECT_ID (firebaseConfig.projectId):', firebaseConfig.projectId || '[NOT SET]');
+    console.log('Firebase Config Object:', JSON.stringify(firebaseConfig, null, 2));
+    console.log('--------------------------------------');
+    // --- END DEBUGGING LOGS ---
+
+
     // Basic validation for essential keys
     if (!groqApiKey || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
         console.error('Missing essential API keys or Firebase config in environment variables.');
