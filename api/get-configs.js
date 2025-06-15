@@ -1,36 +1,22 @@
 // api/get-configs.js
-// This Vercel Serverless Function securely provides both the Gemini API key
-// and Firebase client-side configuration from environment variables.
+// This Vercel Serverless Function now securely provides ONLY the Groq API key
+// from environment variables.
 
 export default function handler(request, response) {
-    // Read environment variables for Gemini API key
+    // Read environment variable for Groq API key
     const groqApiKey = process.env.GROQ_API;
 
-    // Read environment variables for Firebase client-side configuration
-    const firebaseConfig = {
-        apiKey: process.env.FIREBASE_API_KEY,
-        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.FIREBASE_APP_ID,
-        measurementId: process.env.FIREBASE_MEASUREMENT_ID // Optional: include if you use Analytics
-    };
-
     // --- DEBUGGING LOGS (for Vercel runtime logs) ---
-    console.log('--- Serverless Function Config Check ---');
+    console.log('--- Serverless Function Config Check (No Firebase) ---');
     console.log('GROQ_API (groqApiKey):', groqApiKey ? `[Present] ${groqApiKey.substring(0, 5)}...` : '[NOT SET]');
-    console.log('FIREBASE_API_KEY (firebaseConfig.apiKey):', firebaseConfig.apiKey ? `[Present] ${firebaseConfig.apiKey.substring(0, 5)}...` : '[NOT SET]');
-    console.log('FIREBASE_PROJECT_ID (firebaseConfig.projectId):', firebaseConfig.projectId || '[NOT SET]');
-    console.log('Firebase Config Object:', JSON.stringify(firebaseConfig, null, 2));
-    console.log('--------------------------------------');
+    console.log('----------------------------------------------------');
     // --- END DEBUGGING LOGS ---
 
 
-    // Basic validation for essential keys
-    if (!groqApiKey || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
-        console.error('Missing essential API keys or Firebase config in environment variables.');
-        response.status(500).json({ error: 'Server configuration error: Essential API keys or Firebase config missing.' });
+    // Basic validation for essential keys (only Groq API key now)
+    if (!groqApiKey) {
+        console.error('Missing essential API key in environment variables: GROQ_API is [NOT SET]');
+        response.status(500).json({ error: 'Server configuration error: Groq API key missing.' });
         return;
     }
 
@@ -40,7 +26,6 @@ export default function handler(request, response) {
     response.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
     response.status(200).json({
-        geminiApiKey: groqApiKey,
-        firebaseConfig: firebaseConfig
+        groqApiKey: groqApiKey // Changed property name to groqApiKey for clarity
     });
 }
