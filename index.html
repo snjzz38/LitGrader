@@ -273,17 +273,20 @@
        // Define the primary Gemini model to use
        const PRIMARY_GEMINI_MODEL = "gemini-2.0-flash-lite"; // Most cost-efficient and generally available
 
-       // DOM Elements
+       // DOM Elements - Using direct HTML IDs as keys for consistency
        const dom = {
-           instructionsTextarea: document.getElementById('instructions'),
-           instructionsFileInput: document.getElementById('instructions-file'),
-           instructionsFileList: document.getElementById('instructions-file-list'),
-           rubricTextarea: document.getElementById('rubric'),
-           rubricFileInput: document.getElementById('rubric-file'),
-           rubricFileList: document.getElementById('rubric-file-list'),
-           essayTextarea: document.getElementById('essay'),
-           essayFileInput: document.getElementById('essay-file'),
-           essayFileList: document.getElementById('essay-file-list'),
+           instructions: document.getElementById('instructions'), // textarea
+           'instructions-file': document.getElementById('instructions-file'), // file input
+           'instructions-file-list': document.getElementById('instructions-file-list'), // ul for file list
+
+           rubric: document.getElementById('rubric'), // textarea
+           'rubric-file': document.getElementById('rubric-file'), // file input
+           'rubric-file-list': document.getElementById('rubric-file-list'), // ul for file list
+
+           essay: document.getElementById('essay'), // textarea
+           'essay-file': document.getElementById('essay-file'), // file input
+           'essay-file-list': document.getElementById('essay-file-list'), // ul for file list
+
            extraInstructionsTextarea: document.getElementById('extra-instructions'),
            gradeButton: document.getElementById('grade-button'),
            loadingIndicator: document.getElementById('loading-indicator'),
@@ -297,7 +300,7 @@
            strictnessValueDisplay: document.getElementById('strictness-value'),
        };
 
-       // Store files in arrays mapped to their input elements
+       // Store files in arrays mapped to their input elements (using HTML IDs as keys)
        const attachedFiles = {
            'instructions-file': [],
            'rubric-file': [],
@@ -504,9 +507,9 @@
                let instructionsData, rubricData, essayData;
 
                try {
-                   instructionsData = await getProcessedSectionContent(dom.instructionsTextarea, attachedFiles['instructions-file']);
-                   rubricData = await getProcessedSectionContent(dom.rubricTextarea, attachedFiles['rubric-file']);
-                   essayData = await getProcessedSectionContent(dom.essayTextarea, attachedFiles['essay-file']);
+                   instructionsData = await getProcessedSectionContent(dom.instructions, attachedFiles['instructions-file']);
+                   rubricData = await getProcessedSectionContent(dom.rubric, attachedFiles['rubric-file']);
+                   essayData = await getProcessedSectionContent(dom.essay, attachedFiles['essay-file']);
                } catch (fileProcessingError) {
                    displayError(`File processing error: ${fileProcessingError.message}`);
                    return; // Stop execution if file processing fails
@@ -675,23 +678,23 @@
 
        /**
         * Updates the displayed list of attached files for a given input.
-        * @param {string} inputId The ID of the file input element (e.g., 'instructions-file').
+        * @param {string} fileInputId The ID of the file input element (e.g., 'instructions-file').
         */
-       function updateFileListDisplay(inputId) {
-           const fileListElement = dom[`${inputId.replace('-', 'L')}List`]; // e.g., instructionsFileList
+       function updateFileListDisplay(fileInputId) {
+           const fileListElement = dom[fileInputId + '-list']; // Access ul element using its ID in dom object
            fileListElement.innerHTML = ''; // Clear current list
 
-           if (attachedFiles[inputId].length === 0) {
+           if (attachedFiles[fileInputId].length === 0) {
                fileListElement.classList.remove('expanded'); // Ensure collapsed if no files
                // Locate the specific toggle button for this input section
-               const fileInput = dom[inputId];
+               const fileInput = dom[fileInputId];
                const parentDiv = fileInput.closest('.flex.items-center');
                const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null;
                if (toggleButton) toggleButton.textContent = 'Show Files';
                return;
            }
 
-           attachedFiles[inputId].forEach((file, index) => {
+           attachedFiles[fileInputId].forEach((file, index) => {
                const listItem = document.createElement('li');
                listItem.className = 'file-list-item';
                listItem.innerHTML = `
@@ -704,18 +707,25 @@
 
        /**
         * Attaches event listeners for file input changes and removal, and adds toggle for file list.
-        * @param {string} inputId The ID of the file input element.
+        * @param {string} fileInputId The ID of the file input element.
         */
-       function setupFileInput(inputId) {
-           const fileInput = dom[inputId];
-           const fileListElement = dom[`${inputId.replace('-', 'L')}List`];
-           const parentDiv = fileInput.closest('.flex.items-center'); // Find the containing div
+       function setupFileInput(fileInputId) {
+           const fileInput = dom[fileInputId]; // Access file input element using its ID in dom object
+           const fileListElement = dom[fileInputId + '-list']; // Access ul element using its ID in dom object
+
+           // Add a null check for fileInput to prevent errors if element is missing
+           if (!fileInput) {
+               console.error(`File input element with ID '${fileInputId}' not found. Cannot set up file input.`);
+               return;
+           }
+
+           const parentDiv = fileInput.closest('.flex.items-center'); // This should now correctly find the parent div
            const toggleButton = parentDiv ? parentDiv.querySelector('.toggle-file-list-button') : null; // Find the button within that div
 
            // Handle file selection
            fileInput.addEventListener('change', (event) => {
-               attachedFiles[inputId] = Array.from(event.target.files);
-               updateFileListDisplay(inputId);
+               attachedFiles[fileInputId] = Array.from(event.target.files);
+               updateFileListDisplay(fileInputId);
                fileListElement.classList.add('expanded'); // Expand when files are added
                if (toggleButton) toggleButton.textContent = 'Hide Files';
                event.target.value = ''; // Clear input value to allow re-selection
@@ -726,8 +736,8 @@
                if (event.target.tagName === 'BUTTON') {
                    const indexToRemove = parseInt(event.target.dataset.index);
                    if (!isNaN(indexToRemove)) {
-                       attachedFiles[inputId].splice(indexToRemove, 1);
-                       updateFileListDisplay(inputId); // This will also handle collapsing if empty
+                       attachedFiles[fileInputId].splice(indexToRemove, 1);
+                       updateFileListDisplay(fileInputId); // This will also handle collapsing if empty
                    }
                }
            });
@@ -748,9 +758,9 @@
 
        // Function to clear all textareas and hide previous results
        function clearInputs() {
-           dom.instructionsTextarea.value = '';
-           dom.rubricTextarea.value = '';
-           dom.essayTextarea.value = '';
+           dom.instructions.value = '';
+           dom.rubric.value = '';
+           dom.essay.value = '';
            dom.extraInstructionsTextarea.value = '';
 
            // Clear file inputs and their displays
@@ -781,7 +791,7 @@
            dom.gradeButton.parentNode.insertBefore(clearButton, dom.gradeButton.nextSibling);
 
            // Setup file input listeners for all sections
-           setupFileInput('instructions-file');
+           setupFileInput('instructions-file'); // Pass the actual HTML ID string
            setupFileInput('rubric-file');
            setupFileInput('essay-file');
 
